@@ -1,0 +1,64 @@
+source=Duden
+ok=true
+url=https://www.duden.de/rechtschreibung/springen?amp
+entry 1 headword=sprin­gen title=sprin­gen part_of_speech=starkes Verb grammar=starkes Verb url=https://www.duden.de/rechtschreibung/springen?amp
+etymology=mittelhochdeutsch springen, althochdeutsch springan, ursprünglich = aufspringen, hervorbrechen, verwandt mit dem Spur zugrunde liegenden Verb mit der Bedeutung „treten; zappeln, zucken“
+synonyms sense=- items=[eilen | fegen | hetzen | jagen]
+sense 1 source_id=- label=1 definition=-
+  sense 1 source_id=Bedeutung-1a label=1a definition=sich [durch kräftiges Sichabstoßen mit den Beinen vom Boden] in die Höhe, nach vorn schnellen
+  qualifiers=[Grammatik: Perfektbildung mit „ist“]
+  examples=[gut, hoch springen können | mit Anlauf, aus dem Stand springen | nun spring doch endlich! | die Kinder springen mit dem [Spring]seil | die Fische springen (schnellen sich aus dem Wasser) | ⟨in übertragener Bedeutung:⟩ wenn man beim Mühlespiel nur noch drei Steine hat, darf man springen (seine Steine auf jeden beliebigen freien Punkt setzen)]
+  sense 2 source_id=Bedeutung-1b label=1b definition=sich springend (1a) irgendwohin, in eine bestimmte Richtung, von einem bestimmten Platz wegbewegen
+  qualifiers=[Grammatik: Perfektbildung mit „ist“]
+  examples=[der Hund sprang ihm an die Kehle | die Katze ist auf den Tisch gesprungen | auf, vor einen fahrenden Zug springen | auf die Beine, Füße springen (mit einer raschen Bewegung aufstehen) | aus dem Fenster, vom Dach springen | aus dem Bett springen (mit einer raschen, schwungvollen Bewegung aus dem Bett aufstehen) | aus dem Auto, ins Auto springen (rasch aus dem Auto, ins Auto steigen) | vor Freude in die Höhe springen | hin und her springen | ins Wasser, über Bord springen | vom Pferd springen | über den Graben, von Stein zu Stein springen | zur Seite springen | ⟨in übertragener Bedeutung:⟩ er springt von einem Thema zum anderen (wechselt oft unvermittelt das Thema) | ⟨in übertragener Bedeutung:⟩ weil mehrere Kollegen krank waren, musste er springen (je nach Bedarf von einem Arbeitsplatz zum anderen wechseln)]
+sense 2 source_id=- label=2 definition=-
+  sense 1 source_id=Bedeutung-2a label=2a definition=einen Sprung (1b) ausführen
+  qualifiers=[Gebrauch: Sport | Grammatik: Perfektbildung mit „ist“ oder „hat“]
+  examples=[jeder darf dreimal springen | bist/hast du schon gesprungen?]
+  sense 2 source_id=Bedeutung-2b label=2b definition=beim Springen (2a) (eine bestimmte Leistung) erreichen
+  qualifiers=[Gebrauch: Sport | Grammatik: Perfektbildung mit „ist“ oder „hat“]
+  examples=[er ist/hat 6,20 m, einen neuen Rekord gesprungen]
+  sense 3 source_id=Bedeutung-2c label=2c definition=(einen bestimmten Sprung) ausführen
+  qualifiers=[Gebrauch: Sport | Grammatik: Perfektbildung mit „ist“ oder „hat“]
+  examples=[einen Salto springen]
+sense 3 source_id=Bedeutung-3 label=3 definition=sich rasch in großen Sprüngen, in großen Sätzen fortbewegen
+qualifiers=[Grammatik: Perfektbildung mit „ist“]
+examples=[die Kinder sprangen in alle Richtungen | ein Reh sprang über die Lichtung | ⟨in übertragener Bedeutung:⟩ wenn sie einen Wunsch hat, springt die ganze Familie (bemüht sich die ganze Familie, ihren Wunsch möglichst schnell zu erfüllen) | ⟨in übertragener Bedeutung:⟩ die Flammen sprangen von Haus zu Haus]
+sense 4 source_id=- label=4 definition=-
+  sense 1 source_id=Bedeutung-4a label=4a definition=laufen, rennen, eilen
+  qualifiers=[Gebrauch: süddeutsch, schweizerisch landschaftlich | Grammatik: Perfektbildung mit „ist“]
+  examples=[wenn wir den Bus noch kriegen wollen, müssen wir aber springen]
+  sense 2 source_id=Bedeutung-4b label=4b definition=[rasch] irgendwohin gehen [um etwas zu besorgen, zu erledigen]
+  qualifiers=[Gebrauch: landschaftlich | Grammatik: Perfektbildung mit „ist“]
+  examples=[ich spring nur rasch zum Bäcker, zum Briefkasten]
+sense 5 source_id=- label=5 definition=-
+  sense 1 source_id=Bedeutung-5a label=5a definition=sich mit einer raschen [ruckartigen] Bewegung irgendwohin bewegen, irgendwohin rücken
+  qualifiers=[Grammatik: Perfektbildung mit „ist“]
+  examples=[der Zeiger sprang auf die Acht | der Kilometerzähler springt gleich auf 50 000 | die Ampel (das Licht der Ampel) sprang [von Gelb] auf Rot]
+  sense 2 source_id=Bedeutung-5b label=5b definition=(aus einer Lage) geschnellt werden
+  qualifiers=[Grammatik: Perfektbildung mit „ist“]
+  examples=[ein Knopf war ihm von der Jacke gesprungen | der Ball sprang ihm vom Fuß, sprang vom Schläger]
+  sense 3 source_id=Bedeutung-5c label=5c definition=sich, einem starken Druck nachgebend, mit einem Ruck aus seiner Lage bewegen
+  qualifiers=[Grammatik: Perfektbildung mit „ist“]
+  examples=[die Lok ist aus dem Gleis gesprungen | die Straßenbahn sprang aus den Schienen (entgleiste)]
+  idioms=[etwas springen lassen/springenlassen (umgangssprachlich: etwas spendieren: er hat 300 Euro springen lassen)]
+sense 6 source_id=- label=6 definition=-
+  sense 1 source_id=Bedeutung-6a label=6a definition=[aufprallen und] in die Höhe springen
+  qualifiers=[Grammatik: Perfektbildung mit „ist“]
+  examples=[der Ball springt nicht mehr]
+  sense 2 source_id=Bedeutung-6b label=6b definition=sich springend (6a) irgendwohin bewegen
+  qualifiers=[Grammatik: Perfektbildung mit „ist“]
+  examples=[der Ball sprang über die Torlinie, ins Aus]
+sense 7 source_id=Bedeutung-7 label=7 definition=spritzend, sprudelnd aus etwas hervortreten
+qualifiers=[Gebrauch: gehoben | Grammatik: Perfektbildung mit „ist“]
+examples=[aus dem Stein sprangen Funken]
+sense 8 source_id=- label=8 definition=-
+  sense 1 source_id=Bedeutung-8a label=8a definition=einen Sprung (3), Sprünge bekommen
+  qualifiers=[Grammatik: Perfektbildung mit „ist“]
+  examples=[die Vase ist gesprungen]
+  sense 2 source_id=Bedeutung-8b label=8b definition=zerspringen
+  qualifiers=[Grammatik: Perfektbildung mit „ist“]
+  examples=[in Scherben, in 1000 Stücke springen | eine Saite ist gesprungen (gerissen)]
+  sense 3 source_id=Bedeutung-8c label=8c definition=aufbrechen, platzen
+  qualifiers=[Grammatik: Perfektbildung mit „ist“]
+  examples=[gesprungene Lippen]

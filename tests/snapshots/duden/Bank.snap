@@ -1,0 +1,40 @@
+source=Duden
+ok=true
+url=https://www.duden.de/rechtschreibung/Bank_Sitzgelegenheit?amp | https://www.duden.de/rechtschreibung/Bank_Geldinstitut?amp
+entry 1 headword=Bank title=Bank, die part_of_speech=Substantiv grammar=Substantiv, feminin url=https://www.duden.de/rechtschreibung/Bank_Sitzgelegenheit?amp
+etymology=mittelhochdeutsch, althochdeutsch banc = Bank, Tisch, ursprünglich = Erhöhung
+sense 1 source_id=- label=1 definition=-
+  sense 1 source_id=Bedeutung-1a label=1a definition=Sitzgelegenheit aus Holz, Stein o. Ä., die mehreren Personen nebeneinander Platz bietet
+  examples=[sich auf eine Bank setzen | in der Schule in einer Bank (Schulbank) sitzen | der Angeklagte saß unruhig in der Bank (Anklagebank)]
+  idioms=[etwas auf die lange Bank schieben (umgangssprachlich: etwas Unangenehmes aufschieben, hinauszögern: er schob den Arztbesuch auf die lange Bank; eigentlich = bis zur Bearbeitung in den langen Aktentruhen der Gerichte aufbewahren lassen) | durch die Bank (umgangssprachlich: durchweg, ohne Ausnahme, ohne Unterschied: das Obst war durch die Bank frisch; eigentlich = in der Reihenfolge, wie die Leute auf einer Bank sitzen) | vor leeren Bänken (vor wenigen Zuhörenden, Zuschauenden: sie spielten vor leeren Bänken)]
+  image=https://cdn.duden.de/_media_/full/B/Bank-201100043436.jpg
+  sense 2 source_id=Bedeutung-1b label=1b definition=Auswechselbank
+  qualifiers=[Gebrauch: Sport]
+  image=https://cdn.duden.de/_media_/full/B/Bank-201100287392.jpg
+sense 2 source_id=- label=2 definition=-
+  sense 1 source_id=Bedeutung-2a label=2a definition=Kurzform für: verschiedene Handwerkstische wie Drehbank, Hobelbank, Werkbank u. a.
+  examples=[an der Bank arbeiten]
+  sense 2 source_id=Bedeutung-2b label=2b definition=bankförmiges Turngerät
+sense 3 source_id=- label=3 definition=-
+  sense 1 source_id=Bedeutung-3a label=3a definition=Kurzform für: Sandbank
+  sense 2 source_id=Bedeutung-3b label=3b definition=Anhäufung von Meereslebewesen, die eine Erhöhung über dem Meeresgrund hervorruft
+  examples=[hohe Bänke von Austern, Korallen]
+  sense 3 source_id=Bedeutung-3c label=3c definition=lange Wolken- oder Dunstschicht
+  sense 4 source_id=Bedeutung-3d label=3d definition=vom umliegenden Gestein gesonderte, fest zusammenhängende Gesteinsschicht
+  qualifiers=[Gebrauch: Geologie]
+sense 4 source_id=Bedeutung-4 label=4 definition=unverändert beibehaltene Vorhersage auf Tippscheinen
+examples=[eine Bank tippen | dieses Spiel ist eine Bank (kann man als Bank tippen) | ⟨in übertragener Bedeutung:⟩ diese Stürmerin ist eine Bank in unserem Team (umgangssprachlich; man kann sich hundertprozentig auf sie verlassen); dieses Geschenk ist eine Bank (ein sicherer Erfolg)]
+sense 5 source_id=Bedeutung-5 label=5 definition=Ausgangsstellung auf dem Boden mit auf Knie und Arme gestütztem Körper
+qualifiers=[Gebrauch: Sport]
+entry 2 headword=Bank title=Bank, die part_of_speech=Substantiv grammar=Substantiv, feminin url=https://www.duden.de/rechtschreibung/Bank_Geldinstitut?amp
+etymology=italienisch banco, banca, eigentlich = Tisch des Geldwechslers, aus dem Germanischen
+synonyms sense=- items=[Bankhaus | Geldinstitut | Kreditanstalt | Kreditinstitut]
+sense 1 source_id=- label=1 definition=-
+  sense 1 source_id=Bedeutung-1a label=1a definition=Unternehmen, das Geld- und Kreditgeschäfte betreibt und den Zahlungsverkehr vermittelt
+  examples=[ein Konto bei der Bank haben | Geld auf der Bank [liegen] haben, von der Bank holen]
+  sense 2 source_id=Bedeutung-1b label=1b definition=Gebäude, in dem eine Bank (1a) untergebracht ist
+  examples=[die Bank ist 1910 gebaut worden]
+  image=https://cdn.duden.de/_media_/full/B/Bank-201100287376.jpg
+sense 2 source_id=Bedeutung-2 label=2 definition=Geldeinsatz eines einzelnen Bankhalters, der gegen alle anderen Spieler spielt oder den Einsatz verwaltet
+qualifiers=[Gebrauch: Glücksspiel]
+examples=[die Bank halten, sprengen | gegen die Bank spielen]

@@ -4,6 +4,8 @@ This file records completed changes.
 
 ## Unreleased
 
+- `ADDED`: Added offline snapshot tests for the Duden AMP parser covering single entries, homographs, and no-match results.
+- `CHANGED`: Replaced the Duden placeholder scraper with structured AMP parsing and homograph search fallback.
 - `ADDED`: Added offline snapshot tests and local REST HTML fixtures for the Wiktionary parser.
 - `CHANGED`: Switched Wiktionary parsing to the German REST HTML API with structured homograph and sense extraction.
 - `ADDED`: Added fixture-based snapshot tests for the OpenThesaurus parser using local mock JSON for seven lookup words.
