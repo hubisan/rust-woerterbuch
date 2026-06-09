@@ -4,6 +4,8 @@ This file records completed changes.
 
 ## Unreleased
 
+- `ADDED`: Added fixture-based snapshot tests for the OpenThesaurus parser using local mock JSON for seven lookup words.
+- `CHANGED`: Switched OpenThesaurus lookups from placeholder HTML scraping to the structured JSON API parser.
 - ...
 
 ## Instructions

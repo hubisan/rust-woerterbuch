@@ -1,0 +1,6 @@
+source=Openthesaurus
+ok=true
+url=https://www.openthesaurus.de/synonyme/Zaun
+entry 1 headword=Zaun
+group 1 categories=[] items=[Einzäunung, Umzäunung, Fenz]
+group 2 categories=[] items=[Gatter, Gitter]

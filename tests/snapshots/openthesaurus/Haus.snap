@@ -1,0 +1,13 @@
+source=Openthesaurus
+ok=true
+url=https://www.openthesaurus.de/synonyme/Haus
+entry 1 headword=Haus
+group 1 categories=[] items=[Haus..., hausintern, inhäusig, inhouse, innerbetrieblich, intern, firmenintern]
+group 2 categories=[] items=[Heim, Behausung, Bude, Hütte]
+group 3 categories=[] items=[Familie, Familienbande, Geblüt, Geschlecht, Sippe, Stamm, Mischpoke]
+group 4 categories=[] items=[Bungalow, (eingeschossiges) Haus]
+group 5 categories=[] items=[Betriebs..., betriebseigen, betriebsintern, firmenintern, Haus..., hauseigen, vor Ort]
+group 6 categories=[] items=[bewährt, (jemandes) Haus..., langjährig, ... meines Vertrauens, (jemandes) Haus- und Hof-..., (jemandes) Leib-und-Magen-...]
+group 7 categories=[] items=[Geschäft, Laden (...laden), Handel (für ..., ...handel), Handlung (...handlung), ...haus, Kauf(manns)laden, Ladengeschäft, ...markt, Shop (...shop), Store, Detailgeschäft, Einzelhandelsgeschäft]
+group 8 categories=[] items=[Anwesen, Domaine, Finca (span., südamer.), Herrenhaus, Landgut, Landhaus, Landsitz, Manor, Villa]
+group 9 categories=[] items=[Ministerium, (das) Haus (+ Ministername)]

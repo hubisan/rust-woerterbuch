@@ -1,0 +1,6 @@
+source=Openthesaurus
+ok=true
+url=https://www.openthesaurus.de/synonyme/Bank
+entry 1 headword=Bank
+group 1 categories=[] items=[Parkbank, Sitzbank]
+group 2 categories=[Ökonomie] items=[Bankhaus, Finanzinstitut, Finanzinstitution, Geldhaus, Geldinstitut, Geschäftsbank, Kreditanstalt, Kreditinstitut, Sparkasse]

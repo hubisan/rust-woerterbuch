@@ -41,7 +41,7 @@ Der Wechsel auf den REST-Endpunkt liefert nun das nackte Inhalts-HTML komplett o
 
 Jetzt übersetzen wir die Scraping-Logik der Backends nacheinander von Elisp nach Rust. Wir starten mit OpenThesaurus.
 
-### NEXT Openthesaurus
+### DONE Openthesaurus [[./2026-06-09--openthesaurus-parser.md]]
 
 In dem Ordner sind die Emasc Lisp Dateien für das Scrapen/Parsen [emacs-lisp](../../emacs-lisp). Für OpenThesaurus ist relevant:
 
