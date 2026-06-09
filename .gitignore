@@ -1,0 +1,24 @@
+/target
+Cargo.lock
+.env
+.DS_Store
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+*:Zone.Identifier
+
+# Project update temp folder
+.project-update-tmp/
+
+# Build / Cache
+dist/
+build/
+.cache/
+.tmp/
+tmp/
+temp/
+coverage/

@@ -1,0 +1,7 @@
+# Repository-specific AI Instructions
+
+## Preferred checks
+
+## Project structure
+
+## Coding style
