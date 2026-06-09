@@ -1,0 +1,30 @@
+source=Wiktionary
+ok=true
+url=https://de.wiktionary.org/wiki/Bank
+entry 1 headword=Bank title=Bank, Substantiv, f, Bänke part_of_speech=Substantiv grammar=Substantiv, f, Bänke
+etymology=mittelhochdeutsch banc, althochdeutsch bank, germanisch *banki- „Bank“, belegt seit dem 9. Jahrhundert
+idioms=[durch die Bank | etwas auf die lange Bank schieben | vor leeren Bänken sprechen]
+synonyms sense=2 items=[Lage]
+synonyms sense=5 items=[Theke, Tresen]
+synonyms sense=6 items=[Auswechselbank, Ersatzbank]
+sense 1 label=1 definition=Sitz- oder Ablagegelegenheit für mehrere Personen oder Dinge nebeneinander
+examples 1=[Sollen wir uns auf diese Bank setzen? | „Nach dem Abendessen gingen Sung und Hideo auf eine Runde in den Park und saßen dann lange schweigend auf einer Bank am Teich.“ | „Smoaks setzte sich auf die gegenüberliegende Bank und sah ihn an.“ | „Die kleine Bank mit den zwei Kissen war fortgeräumt, und statt ihrer stand eine Chaiselongue da, darauf die Kranke ruhte, den Oberkörper mit einem Schal, die Füße mit einer Reisedecke zugedeckt, in die das Wappen der St. Arnauds oder vielleicht auch das der Woronesch von Zacha eingestickt war.“ | „Darüber wurde der Fußboden eingezogen, und an den Wänden stellte man Bänke auf, die gleichzeitig als Truhen dienten.“]
+sense 2 label=2 definition=geologische Formation
+examples 2=[„Eine Bank oder die Lage (lat. stratum, engl. bed, layer, abgekürzt Bk. oder Lg.) ist im Sprachgebrauch der Geologie, Geotechnik und Stratigraphie eine vom umliegenden Gestein deutlich in Struktur, Farbe oder Material gesonderte, zusammenhängende Gesteinsschicht.“ | Diese kalkhaltige Bank wurde von Steinsuchern in den letzten Jahrzehnten weitgehend abgebaut.]
+sense 3 label=3 definition=Ablagerung von Material in einem Gewässer
+examples 3=[In dieser Flussschlinge hat die Strömung eine schöne Bank gebildet.]
+sense 4 label=4 definition=Anhäufung biologischer Rückstände auf dem Meeresgrund
+examples 4=[Eine besondere Art von Bank ist das Korallenriff.]
+sense 5 label=5 definition=Verkaufstisch oder Ladentisch für Käse, Fleisch, Fisch, Salat oder Ähnliches
+examples 5=[Vor der Bank des Konsumvereins waren Frauen, Kinder und Männer zu sehen.]
+sense 6 label=6 definition=Sport, kurz für: Auswechselbank, Ersatzbank
+examples 6=[„Der Nationalspieler hatte sein Zwicken im Muskel aus der Vorwoche zwar auskuriert, er blieb aber wie so oft zunächst auf der Bank. “ | „Die vorgenommenen Wechsel (durchschnittlich 4,23 pro Spiel) zeigten oft Wirkung: Sieben Scorerpunkte - vier Tore und drei Assists - kamen bei den Hamburgern bislang von der Bank. “]
+entry 2 headword=Bank title=Bank, Substantiv, f, Banken part_of_speech=Substantiv grammar=Substantiv, f, Banken
+etymology=im 13. Jahrhundert von italienisch banco → it, banca „ Tisch “ für „ Geldhandelsort, Vorratsplatz “ entlehnt. Dem italienischen Wort liegt althochdeutsch banc / bank zu Grunde.
+idioms=[eine sichere Bank | ich bin doch nicht die Bank von England! | Die Bank gewinnt immer.]
+synonyms sense=1 items=[Geldhaus, Geldinstitut, Finanzinstitut, Finanzunternehmen, Kreditinstitut, Bankhaus]
+synonyms sense=2 items=[Kasino, Spielbank]
+sense 1 label=1 definition=Finanzwesen: Geldinstitut für Finanzdienstleistungen
+examples 1=[Diese Bank wäre bei dem Großbrand gestern fast abgebrannt. | „Die Guthaben bei Banken und Sparkassen seien gesichert und blieben unberührt.“]
+sense 2 label=2 definition=Glücksspiellokal; auch eine der Spielparteien kann als Bank bezeichnet werden (beim Roulette gewinnt die Bank, wenn keine der gesetzten Kombinationen fällt), oder auch ein zentraler Vorrat, der selbst nicht am Wettstreit teilnimmt, kann so bezeichnet werden (beispielsweise der Vorrat an Straßen, Häusern und Hotels, die beim Monopoly bisher noch von keinem Mitspieler gekauft wurden)
+examples 2=[Keiner hat richtig gesetzt, die Einsätze gehen an die Bank. | „Ein sehr ehrenwerter Patrizier hatte mich mit einem Viertel an seiner Bank beteiligt und übergab mir in den ersten Tagen der Fastenzeit eine ziemlich bedeutende Summe.“]

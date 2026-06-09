@@ -45,7 +45,7 @@ Match user's language for chat. Use English for code, comments, docs, commits, a
 1. User marks a task in [../tasks/todo.md](../tasks/todo.md) as `NEXT`.
 2. AI only works on `NEXT` or `CONTINUE` tasks unless explicitly instructed.
 3. For each AI task, AI creates/uses a task file in [../tasks/](../tasks/) based on [../tasks/template.md](../tasks/template.md): `../tasks/YYYY-MM-DD--slug.md`. Remove sections in the template if not relevant. Add other sections if it makes sense. Add the task start date at the top at `#+TASK_STARTED:`, like `[2026-06-03 Mi]`.
-4. AI links the task in [../tasks/todo.md](../tasks/todo.md) to its task file. Example: `[[./2026-05-24--anki-export-fix.md]]` (relative to the todo file).
+4. AI links the task in [../tasks/todo.md](../tasks/todo.md) to its task file. Example: `[./2026-05-24--anki-export-fix.md](./2026-05-24--anki-export-fix.md)` (relative to the todo file).
 5. On `main`, create a focused branch, e.g. `feature/task-name` or `fix/task-name`; otherwise continue on the current branch and report suspicious branch/repo state.
 6. AI reads and follows [./repository.md](./repository.md) for repository-specific instructions.
 7. AI implements the requested task.

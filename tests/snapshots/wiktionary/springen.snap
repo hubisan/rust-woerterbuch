@@ -1,0 +1,20 @@
+source=Wiktionary
+ok=true
+url=https://de.wiktionary.org/wiki/springen
+entry 1 headword=springen title=springen, Verb, unregelmäßig part_of_speech=Verb grammar=Verb, unregelmäßig
+etymology=mittelhochdeutsch springen → gmh, althochdeutsch springan → goh, das ursprünglich aufspringen, hervorbrechen bedeutete; verwandt mit dem Spur zu Grunde liegenden Verb (»treten; zappeln, zucken«)
+idioms=[vor Freude an die Decke springen | dem Tod von der Schippe springen | der springende Punkt | etwas springen lassen | in die Augen springen | in die Bresche springen | in Stücke springen]
+synonyms sense=1 items=[hopsen, hüpfen]
+synonyms sense=2 items=[hervorschießen]
+synonyms sense=4 items=[hervorschießen, herausspritzen, emporschießen, entspringen, hervorquellen]
+synonyms sense=5 items=[bersten, reißen, platzen]
+sense 1 label=1 definition=hochschnellen und sich ein kurzes Stück durch die Luft bewegen
+examples 1=[Sie springt zwei Meter hoch. | „Ich […] sprang in das Motorboot und fuhr es auf die andere Seite des Stegs, um es dort festzumachen.“]
+sense 2 label=2 definition=sich plötzlich ins Blickfeld bewegen
+examples 2=[Plötzlich sprangen zwei Männer aus dem Gebüsch.]
+sense 3 label=3 definition=sich mehr oder weniger elegant fallen lassen
+examples 3=[Er sprang kopfüber in die Fluten.]
+sense 4 label=4 definition=veraltet, über Wasser: herausspritzen, emporschießen
+examples 4=[Die Fontäne springt dreißig Fuß empor.]
+sense 5 label=5 definition=von Glas, Eis, Stein und ähnlich Porösem: plötzlich Risse (Sprünge) bekommen
+examples 5=[Die Scheibe ist zwar nicht zerbrochen, aber gesprungen.]
