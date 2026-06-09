@@ -41,7 +41,730 @@ Der Wechsel auf den REST-Endpunkt liefert nun das nackte Inhalts-HTML komplett o
 
 Jetzt übersetzen wir die Scraping-Logik der Backends nacheinander von Elisp nach Rust. Wir starten mit OpenThesaurus.
 
-## TODO DWDS: HTML-Parser + Snapshot-Tests
+## REVIEW DWDS: HTML-Parser + Snapshot-Tests
+
+Task file: [./2026-06-09--dwds-parser.md](./2026-06-09--dwds-parser.md)
+
+Portiere die alte DWDS-Scraping-Logik aus Emacs Lisp nach Rust und ersetze den aktuellen groben DWDS-Stub durch einen robusten Parser mit deterministischen Offline-Snapshot-Tests.
+
+DWDS ist die letzte noch fehlende Quelle. Der aktuelle Rust-Code in `src/sources/dwds.rs` ist noch deutlich zu grob: Er liest nur ein paar globale Selektoren, sammelt Beispiele pauschal auf die erste Bedeutung und bildet Homographen, rekursive Bedeutungen, DWDS-IDs, Qualifier, Mehrwortausdrücke, Etymologie und Idiome noch nicht korrekt ab.
+
+Maßgeblich ist die fachliche Logik aus `woerterbuch-dwds.el`, idiomatisch in Rust umgesetzt und auf die vorhandenen Rust-Modelle gemappt.
+
+### Wichtigste geprüfte Grundlage
+
+Unbedingt zuerst lesen:
+
+- `../../emacs-lisp/lisp/woerterbuch-dwds.el`
+- `../../emacs-lisp/tests/test-woerterbuch-dwds.el`
+- `../../emacs-lisp/tests/test-helper.el`
+- `../../emacs-lisp/tests/files/dwds/`
+- `../../src/sources/dwds.rs`
+- `../../src/models.rs`
+- `../../src/sources/openthesaurus.rs`
+- `../../src/sources/wiktionary.rs`
+- `../../src/sources/duden.rs`
+
+Aus `woerterbuch-dwds.el` sind insbesondere diese Funktionen relevant und sollen fachlich portiert werden:
+
+- `woerterbuch-dwds--build-url`
+- `woerterbuch-dwds--clean-text`
+- `woerterbuch-dwds--text`
+- `woerterbuch-dwds--text-skipping-classes`
+- `woerterbuch-dwds--canonical-url`
+- `woerterbuch-dwds--field-text`
+- `woerterbuch-dwds--wortart-from-grammar`
+- `woerterbuch-dwds--extract-qualifiers`
+- `woerterbuch-dwds--reference-definition`
+- `woerterbuch-dwds--extract-reference-text`
+- `woerterbuch-dwds--mwa-marker-p`
+- `woerterbuch-dwds--local-mwa-marker-p`
+- `woerterbuch-dwds--find-local-mwa-scope`
+- `woerterbuch-dwds--extract-mwa-text`
+- `woerterbuch-dwds--extract-definition-text`
+- `woerterbuch-dwds--extract-examples`
+- `woerterbuch-dwds--parse-idioms`
+- `woerterbuch-dwds--parse-etymology`
+- `woerterbuch-dwds--article-scope-p`
+- `woerterbuch-dwds--article-scopes`
+- `woerterbuch-dwds--entry-page-p`
+- `woerterbuch-dwds--make-definition-parser`
+- `woerterbuch-dwds--parse-homograph`
+- `woerterbuch-dwds--parse-dom`
+- `woerterbuch-dwds--fetch-callback`
+
+### Ziel
+
+Der DWDS-Parser soll DWDS-HTML in die vorhandenen Rust-Modelle überführen:
+
+- `SourceResult`
+- `DictionaryEntry`
+- `Sense`
+- `UrlValue`
+
+DWDS liefert in der alten Implementierung keine Synonyme. `synonym_groups` soll für DWDS daher leer bleiben, außer im aktuellen DWDS-HTML gibt es später eine eindeutig zuverlässige Synonym-Struktur. Für diese Aufgabe sind Definitionen, Beispiele, Herkunft und Idiome maßgeblich.
+
+### Architektur
+
+Halte den Scope möglichst auf `src/sources/dwds.rs` begrenzt.
+
+Erwartete Struktur:
+
+- `lookup(client, query) -> Result<SourceResult>` bleibt für HTTP, URL-Bildung und Fehlerbehandlung zuständig.
+- `parse(query, page_url, html) -> SourceResult` oder eine äquivalente reine Parser-Funktion bleibt unabhängig vom HTTP-Code testbar.
+- Tests dürfen keine Live-Requests ausführen.
+- Snapshot-Tests verwenden lokale HTML-Fixtures.
+- Keine Panics bei fehlenden oder unerwarteten HTML-Sektionen.
+- Keine große Umstellung der CLI.
+- Keine Änderung an gemeinsamen Modellen, außer es ist wirklich notwendig.
+- Ausgabe und Tests müssen deterministisch sein.
+
+Die zentrale Section-Filterung existiert bereits über `SourceResult::retain_sections` in `src/models.rs`. Daher in DWDS nicht wieder das alte Elisp-`sections`-Argument nachbauen. Der Rust-DWDS-Parser soll grundsätzlich alle gefundenen DWDS-Daten extrahieren; die gewünschte Auswahl übernimmt danach die bestehende zentrale Logik.
+
+### Live-Lookup und URL
+
+Portiere die URL-Logik aus `woerterbuch-dwds--build-url`.
+
+DWDS nutzt direkte Wörterbuchseiten:
+
+```text
+https://www.dwds.de/wb/<lemma>
+````
+
+Regeln:
+
+* Suchbegriff URL-encoden.
+* Keine zusätzliche DWDS-Suchseite verwenden.
+* Homographen wie `Bank` stehen auf derselben DWDS-Seite und werden als mehrere Artikel-Scope-Blöcke geparst.
+* Die kanonische URL aus `<link rel="canonical" href="...">` soll bevorzugt verwendet werden.
+* Falls kein Canonical-Link existiert, verwende die gebaute URL als Fallback.
+
+Beispiele:
+
+```text
+Bank -> https://www.dwds.de/wb/Bank
+Haus -> https://www.dwds.de/wb/Haus
+```
+
+### HTTP-Verhalten
+
+DWDS kann bei nicht vorhandenen Wörtern eine normale HTML-Seite ohne `dwdswb-artikel` liefern. Das ist fachlich ein No-Match, nicht zwingend ein HTTP-Fehler.
+
+Erwartung:
+
+* HTTP 2xx mit echter Artikelstruktur -> `SourceResult::ok(...)`
+* HTTP 2xx ohne `dwdswb-artikel` -> `SourceResult::error(Source::Dwds, "No matches found")`
+* HTTP-Fehler -> saubere Fehlerbehandlung wie bei den anderen Quellen
+* Netzwerkfehler -> saubere Fehlerbehandlung über `anyhow`/zentralen `lookup_source`
+
+Die alte Emacs-Lisp-Implementierung nutzte eigene DWDS-Header. Der globale Rust-Client setzt bereits einen Browser-User-Agent. Prüfe trotzdem, ob DWDS live stabil genug ist. Falls nötig, ergänze zentrale HTTP-Header nur allgemein und nicht DWDS-spezifisch, sofern das zur bestehenden Architektur passt.
+
+### Aktueller Rust-Stub: bekannte Probleme
+
+Der aktuelle `src/sources/dwds.rs` macht ungefähr:
+
+* globale Selektoren wie `.dwdswb-lesart-def`
+* globale Beispiel-Sammlung
+* Beispiele pauschal auf die erste Bedeutung
+* keine echten Homographen
+* keine rekursive Lesarten-Struktur
+* keine DWDS-IDs
+* keine Qualifier
+* keine MWA-Definitionen
+* keine saubere Etymologie pro Homograph
+* keine Idiom-Relation-Blöcke
+* kein echter No-Match bei HTML ohne Artikel
+
+Diese Implementierung soll ersetzt oder stark überarbeitet werden.
+
+### DWDS-Seitenstruktur
+
+Wichtige DWDS-Strukturen aus den Fixtures:
+
+* `div.dwdswb-artikel`
+* `h1.dwdswb-ft-lemmaansatz`
+* `a.dwds-bookmark-button[data-hidx]`
+* `div.dwdswb-ft-block`
+* `span.dwdswb-ft-blocklabel`
+* `span.dwdswb-ft-blocktext`
+* `div.dwdswb-lesarten`
+* `div.dwdswb-lesart`
+* `span.dwdswb-lesart-n`
+* `div.dwdswb-lesart-content`
+* `div.dwdswb-lesart-def`
+* `div.dwdswb-verwendungsbeispiele`
+* `span.dwdswb-belegtext`
+* `div.dwdswb-diasystematik`
+* `div.etymwb-entry`
+* `div[id^="relation-block-"][id$="-mwa"]`
+
+Homographen können als mehrere Artikelbereiche beziehungsweise Tab-Panes auf derselben Seite vorkommen. `Bank` ist der zentrale Testfall.
+
+### Homographen
+
+Portiere die Logik aus:
+
+* `woerterbuch-dwds--article-scope-p`
+* `woerterbuch-dwds--article-scopes`
+* `woerterbuch-dwds--parse-homograph`
+
+Regeln:
+
+* Wenn `tab-pane`-Scopes mit echter `dwdswb-artikel`-Struktur existieren, parse diese als getrennte Einträge.
+* Scope mit `id="0"` ignorieren, analog zum Elisp-Code.
+* Falls keine solchen Tab-Panes existieren, aber die Seite selbst einen Artikel enthält, parse die ganze Seite als einen Scope.
+* Jeder Homograph wird ein eigener `DictionaryEntry`.
+* Reihenfolge bleibt DOM-Reihenfolge.
+* Entry-IDs sind stabil: `1`, `2`, `3`, ...
+* `DictionaryEntry.homograph` wird aus `a.dwds-bookmark-button[data-hidx]` gelesen.
+* Falls `data-hidx` fehlt, fallback auf Scope-`id`.
+* Bei einem leeren Homograph-Wert kann `homograph = None` bleiben.
+
+Für `Bank` müssen zwei Einträge entstehen:
+
+* Entry 1: `hidx = "1"`, Plural `Bänke`
+* Entry 2: `hidx = "2"`, Plural `Banken`
+
+Beide teilen sich dieselbe kanonische URL:
+
+```text
+https://www.dwds.de/wb/Bank
+```
+
+### Mapping auf Rust-Modelle
+
+Mapping:
+
+* DWDS-Lemma aus `h1.dwdswb-ft-lemmaansatz b` -> `DictionaryEntry.headword`
+* vollständiger Titel aus `h1.dwdswb-ft-lemmaansatz` -> `DictionaryEntry.title`
+* Homograph-ID aus `data-hidx` oder Scope-ID -> `DictionaryEntry.homograph`
+* Grammatikblock mit Label `Grammatik` -> `DictionaryEntry.grammar`
+* Wortart aus Grammatik -> `DictionaryEntry.part_of_speech`
+* Etymologie aus `div.etymwb-entry` -> `DictionaryEntry.etymology`
+* Mehrwortausdrücke aus Relation-Block `relation-block-<n>-mwa` -> `DictionaryEntry.idioms`
+* Lesarten aus `div.dwdswb-lesarten` -> `DictionaryEntry.senses`
+* DWDS-Lesart-ID, zum Beispiel `d-1-1` -> `Sense.source_id`
+* Lesart-Label, zum Beispiel `1.`, `a)`, `●` -> `Sense.label`
+* Definitionstext -> `Sense.definition`
+* Diasystematische Angaben -> `Sense.qualifiers`
+* Verwendungsbeispiele -> `Sense.examples`
+* Unterlesarten -> `Sense.subsenses`
+
+DWDS-Synonyme bleiben leer.
+
+### Grammatik und Wortart
+
+Portiere:
+
+* `woerterbuch-dwds--field-text`
+* `woerterbuch-dwds--wortart-from-grammar`
+
+Regeln:
+
+* Grammatik steht in einem `dwdswb-ft-block`, dessen Label `Grammatik` enthält.
+* Blocktext wird bereinigt als `grammar` gespeichert.
+* `part_of_speech` wird aus dem Anfang von `grammar` extrahiert:
+
+  * vor dem ersten `·` abschneiden
+  * Klammerzusätze entfernen
+  * trimmen
+
+Beispiele:
+
+```text
+Substantiv (Femininum) · Genitiv Singular: Bank · Nominativ Plural: Bänke
+-> part_of_speech = Substantiv
+
+Substantiv (Neutrum) · Genitiv Singular: Hauses · Nominativ Plural: Häuser
+-> part_of_speech = Substantiv
+```
+
+### Bedeutungen / Lesarten
+
+Portiere die rekursive Logik aus:
+
+* `woerterbuch-dwds--make-definition-parser`
+* `woerterbuch-dwds--extract-definition-text`
+
+DWDS-Lesarten sind rekursiv:
+
+```text
+div.dwdswb-lesarten
+  div.dwdswb-lesart
+    span.dwdswb-lesart-n
+    div.dwdswb-lesart-content
+      div.dwdswb-lesart-def
+      div.dwdswb-verwendungsbeispiele
+      div.dwdswb-lesart
+```
+
+Regeln:
+
+* Nur direkte Child-Lesarten der aktuellen Ebene als `subsenses` übernehmen.
+* Nicht alle Descendants global sammeln.
+* Parent-Sense darf nicht versehentlich Beispiele/Definitionen aus Unterlesarten bekommen.
+* `Sense.id` ist die laufende Nummer innerhalb der jeweiligen Ebene.
+* `Sense.source_id` ist das DWDS-HTML-`id`, zum Beispiel `d-2-3-1`.
+* `Sense.label` ist der Text aus `dwdswb-lesart-n`.
+* `Sense.definition` kann leer sein, wenn die Bedeutung nur Qualifier und Unterbedeutungen hat.
+* Unterbedeutungen werden rekursiv in `Sense.subsenses` gespeichert.
+
+Für `Bank` muss unter anderem diese Struktur möglich sein:
+
+```text
+entry 1
+sense 1 label=1. source_id=d-1-1 definition=Sitz für mehrere Personen nebeneinander, meist aus Holz
+  sense 1 label=● source_id=d-1-1-1 definition=ohne Ausnahme
+sense 2 label=2. source_id=d-1-2 definition=Handwerkstisch
+sense 3 label=3. source_id=d-1-3 definition=Zusammenballung, Anhäufung
+  sense 1 label=a) source_id=d-1-3-1 definition=von Sand, Fels, Schlamm, Tieren in Gewässern
+```
+
+### Definitionstext
+
+Portiere die Logik aus:
+
+* `woerterbuch-dwds--extract-definition-text`
+* `woerterbuch-dwds--text-skipping-classes`
+* `woerterbuch-dwds--extract-reference-text`
+* `woerterbuch-dwds--reference-definition`
+
+Definitionstext soll nur aus fachlich relevanten Blöcken zusammengesetzt werden:
+
+* `dwdswb-verweise`
+* `dwdswb-syntagmatik`
+* `dwdswb-definitionen`
+* `dwdswb-definition`
+
+Zu überspringen:
+
+* `dwdswb-binnenquelle`
+* `dwdswb-paraphrase`, außer bei MWA-Extraktion
+* Quellenangaben
+* Beleg-Metadaten
+* UI-/Layout-Texte
+
+DWDS-Verweise können Definitionen in `data-content` enthalten. Diese müssen als Text extrahiert und HTML-Tags entfernt werden.
+
+Beispiel aus `Bank`:
+
+```text
+Synonym zu Bankhalter = Person, die das Spiel leitet, die Einsätze verwaltet und gegen die die übrigen Spieler spielen
+```
+
+### Mehrwortausdrücke / MWA
+
+Portiere besonders sorgfältig:
+
+* `woerterbuch-dwds--mwa-marker-p`
+* `woerterbuch-dwds--local-mwa-marker-p`
+* `woerterbuch-dwds--find-local-mwa-scope`
+* `woerterbuch-dwds--extract-mwa-text`
+* `woerterbuch-dwds--explicit-phraseme-block-p`
+* `woerterbuch-dwds--normalize-paraphrase-text`
+
+DWDS markiert Mehrwortausdrücke unter anderem mit:
+
+* `letter-mwa.svg`
+* Tooltip/Text `Mehrwortausdruck`
+* Klassen wie `dwdswb-phraseme`
+* `dwdswb-phrasem`
+* `dwdswb-konstruktionsmuster`
+* `dwdswb-syntagmatik`
+
+Erwartetes Format für MWA-Definitionen:
+
+```text
+eine Bank sein (MWA) = etw. sein, das die an es gestellten (hohen) Erwartungen verlässlich erfüllt; jmd. sein, der die von ihm erwartete (erfolgreiche) Leistung mit Sicherheit erbringt
+```
+
+Diese MWA-Definition gehört in `Sense.definition`, nicht in `DictionaryEntry.idioms`.
+
+### Qualifier
+
+Portiere:
+
+* `woerterbuch-dwds--qualifier-node-p`
+* `woerterbuch-dwds--collect-qualifiers`
+* `woerterbuch-dwds--extract-qualifiers`
+
+Regeln:
+
+* Qualifier stehen innerhalb von `dwdswb-diasystematik`.
+* Der Container selbst zählt nicht als Qualifier.
+* Unterknoten mit DWDS-Klassen werden in DOM-Reihenfolge gelesen.
+* Leere Texte ignorieren.
+* Beispiele:
+
+  * `metonymisch`
+  * `Glücksspiel`
+  * `umgangssprachlich`
+  * `übertragen`
+
+Diese werden in `Sense.qualifiers` gespeichert.
+
+### Beispiele
+
+Portiere:
+
+* `woerterbuch-dwds--extract-examples`
+
+Regeln:
+
+* Beispiele nur aus dem zur jeweiligen Lesart gehörenden `dwdswb-verwendungsbeispiele`-Block extrahieren.
+* Nur `dwdswb-belegtext` verwenden.
+* Quellen, Zeitungsnamen, Jahreszahlen und DWDS-Metadaten nicht übernehmen.
+* Beispiele bleiben an der passenden Bedeutung.
+* Keine globale Beispiel-Sammlung.
+* Keine pauschale Zuordnung aller Beispiele zur ersten Bedeutung.
+
+### Idiome / Mehrwortausdrücke als Relation-Block
+
+Portiere:
+
+* `woerterbuch-dwds--parse-idioms`
+* `woerterbuch-dwds--extract-idioms-from-block`
+* `woerterbuch-dwds--find-all-links`
+
+DWDS hat zusätzlich Relation-Blöcke für Mehrwortausdrücke:
+
+```text
+id="relation-block-1-mwa"
+id="relation-block-2-mwa"
+```
+
+Regeln:
+
+* Nur Relation-Block des jeweiligen Artikels/Homographen parsen.
+* Links mit `href` beginnend mit `/wb/` übernehmen.
+* Linktext bereinigen.
+* Deduplizieren mit stabiler Reihenfolge.
+* Ergebnis in `DictionaryEntry.idioms`.
+
+Beispiel `Bank`:
+
+Entry 1:
+
+```text
+durch die Bank
+etw. auf die lange Bank schieben
+```
+
+Entry 2:
+
+```text
+eine Bank sein
+sichere Bank
+todsichere Bank
+```
+
+### Etymologie
+
+Portiere:
+
+* `woerterbuch-dwds--parse-etymology`
+
+Regeln:
+
+* Innerhalb des jeweiligen Homograph-Scopes nach `etymwb-entry` suchen.
+* Text bereinigen.
+* Wenn kein Etymologie-Text vorhanden ist, `None`.
+* Bei Homographen darf die Etymologie nicht zwischen den Einträgen vermischt werden.
+
+Für `Bank` müssen zwei verschiedene Herkunftstexte entstehen:
+
+* `1 Bank f. ‘Sitzmöbel für mehrere’ ...`
+* `2 Bank f. ‘Geschäft für Geldverkehr’ ...`
+
+### Textbereinigung
+
+Portiere `woerterbuch-dwds--clean-text`.
+
+Mindestregeln:
+
+* Whitespace inklusive Non-Breaking-Spaces normalisieren.
+* Mehrfachspaces zu einem Space.
+* Zeilenumbrüche/Tabs zu Spaces.
+* Leerzeichen vor `,` und `.` entfernen.
+* Leerzeichen direkt nach `(` und direkt vor `)` entfernen.
+* Leerzeichen nach `⟨` und vor `⟩` entfernen.
+* Text trimmen.
+* Fachlich relevante Typografie erhalten:
+
+  * `⟨...⟩`
+  * `²Bank`
+  * `100-Dollar-Chips`
+  * Gedankenstriche
+  * Anführungszeichen
+  * Klammerzusätze wie `(MWA)`
+
+Nicht übernehmen:
+
+* Navigation
+* Buttons
+* Lesezeichen/Zitieren-UI
+* Quellen-Metadaten bei Beispielen
+* Layouttexte
+* versteckte Tooltip-Artefakte, außer gezielt ausgewertete `data-content`-Definitionen
+
+### Fixtures
+
+Nutze die vorhandenen alten DWDS-Fixtures als Ausgangspunkt. Sie liegen bereits unter:
+
+```text
+../../emacs-lisp/tests/files/dwds/
+```
+
+Vorhandene relevante Fixtures:
+
+* `Bank/dwds-Bank.html`
+* `Haus/dwds-Haus.html`
+* `springen/dwds-springen.html`
+* `Wolke/dwds-Wolke.html`
+* `Zaun/dwds-Zaun.html`
+* `verlieben/dwds-verlieben.html`
+* `Nixdaexistiert/dwds-Nixdaexistiert.html`
+
+Die alten Expected-Dateien sind wichtige fachliche Oracle-Referenzen:
+
+* `dwds-*-definitions-expected.el`
+* `dwds-*-examples-expected.el`
+* `dwds-*-origin-expected.el`
+* `dwds-*-idioms-expected.el`
+* `dwds-*-synonyms-expected.el`
+
+Empfohlene neue Rust-Fixture-Struktur, falls nicht direkt die alten Fixtures per `include_str!` verwendet werden:
+
+```text
+tests/fixtures/dwds/Bank.html
+tests/fixtures/dwds/Haus.html
+tests/fixtures/dwds/springen.html
+tests/fixtures/dwds/Wolke.html
+tests/fixtures/dwds/Zaun.html
+tests/fixtures/dwds/verlieben.html
+tests/fixtures/dwds/Nixdaexistiert.html
+```
+
+Tests müssen offline laufen. Keine Live-Requests in Tests.
+
+### Snapshot-Tests
+
+Ergänze DWDS-Snapshots analog zu den bestehenden Quellen:
+
+```text
+tests/snapshots/dwds/Bank.snap
+tests/snapshots/dwds/Haus.snap
+tests/snapshots/dwds/springen.snap
+tests/snapshots/dwds/Wolke.snap
+tests/snapshots/dwds/Zaun.snap
+tests/snapshots/dwds/verlieben.snap
+tests/snapshots/dwds/Nixdaexistiert.snap
+```
+
+Die Snapshot-Ausgabe soll textuell, deterministisch und gut diffbar sein.
+
+Der Snapshot-Renderer muss rekursiv mit `Sense.subsenses` umgehen.
+
+Beispielhafte Form:
+
+```text
+source=Dwds
+ok=true
+url=https://www.dwds.de/wb/Bank
+entry 1 homograph=1 headword=Bank title=Bank, die part_of_speech=Substantiv grammar=Substantiv (Femininum) · Genitiv Singular: Bank · Nominativ Plural: Bänke url=https://www.dwds.de/wb/Bank
+idioms=[durch die Bank | etw. auf die lange Bank schieben]
+etymology=1 Bank f. ‘Sitzmöbel für mehrere’ ...
+sense 1 source_id=d-1-1 label=1. definition=Sitz für mehrere Personen nebeneinander, meist aus Holz
+examples=[eine Bank im Park, vor dem Haus | Anlagen mit Bänken | ...]
+  sense 1 source_id=d-1-1-1 label=● definition=ohne Ausnahme
+  examples=[auf den Schwindel sind alle durch die Bank hereingefallen | ...]
+sense 2 source_id=d-1-2 label=2. definition=Handwerkstisch
+sense 3 source_id=d-1-3 label=3. definition=Zusammenballung, Anhäufung
+  sense 1 source_id=d-1-3-1 label=a) definition=von Sand, Fels, Schlamm, Tieren in Gewässern
+
+entry 2 homograph=2 headword=Bank title=Bank, die part_of_speech=Substantiv grammar=Substantiv (Femininum) · Genitiv Singular: Bank · Nominativ Plural: Banken url=https://www.dwds.de/wb/Bank
+idioms=[eine Bank sein | sichere Bank | todsichere Bank]
+etymology=2 Bank f. ‘Geschäft für Geldverkehr’ ...
+sense 1 source_id=d-2-1 label=1. definition=Unternehmen, das gewerbsmäßig Geldgeschäfte und Börsengeschäfte betreibt
+  sense 1 source_id=d-2-1-1 label=● definition=einzelne Filiale einer ²Bank
+  qualifiers=[metonymisch]
+sense 3 source_id=d-2-3 label=3. definition=-
+qualifiers=[Glücksspiel]
+  sense 3 source_id=d-2-3-3 label=c) definition=eine Bank sein (MWA) = etw. sein, das die an es gestellten (hohen) Erwartungen verlässlich erfüllt; jmd. sein, der die von ihm erwartete (erfolgreiche) Leistung mit Sicherheit erbringt
+  qualifiers=[umgangssprachlich]
+```
+
+Für `Nixdaexistiert`:
+
+```text
+source=Dwds
+ok=false
+url=-
+error=No matches found
+```
+
+Die genaue Formatierung darf an vorhandene Snapshot-Helfer angepasst werden, muss aber stabil bleiben.
+
+### Zusätzliche Unit-Tests
+
+Neben Snapshot-Tests bitte gezielte Unit-Tests für Parser-Hilfsfunktionen ergänzen.
+
+Mindestens testen:
+
+* URL-Bildung:
+
+  * `Bank` -> `https://www.dwds.de/wb/Bank`
+  * Leerzeichen und Sonderzeichen werden URL-encodiert.
+* Canonical-URL:
+
+  * `<link rel="canonical" href="...">` wird bevorzugt.
+  * Fallback ist die gebaute URL.
+* Entry-Erkennung:
+
+  * HTML mit `dwdswb-artikel` ist Entry-Page.
+  * HTML ohne `dwdswb-artikel` ergibt No-Match.
+* Homographen:
+
+  * `Bank` ergibt zwei Entries.
+  * `data-hidx` wird in `DictionaryEntry.homograph` übernommen.
+  * Scope `id="0"` wird ignoriert.
+* Titel/Lemma:
+
+  * `h1.dwdswb-ft-lemmaansatz` -> Titel.
+  * `b` darin -> Lemma.
+* Grammatik/Wortart:
+
+  * `Grammatik`-Block wird gefunden.
+  * Wortart wird aus Grammatik extrahiert.
+* Rekursive Lesarten:
+
+  * Parent-Sense mit Child-Senses.
+  * Direkte Kinder statt globale Descendants.
+  * DWDS-IDs wie `d-1-3-1` bleiben in `Sense.source_id`.
+* Definitionstext:
+
+  * `dwdswb-definition`
+  * `dwdswb-definitionen`
+  * `dwdswb-syntagmatik`
+  * `dwdswb-verweise`
+  * `data-content` mit HTML wird in Text umgewandelt.
+* Skip-Klassen:
+
+  * `dwdswb-binnenquelle`
+  * `dwdswb-paraphrase` bei normaler Definition
+* Qualifier:
+
+  * `metonymisch`
+  * `Glücksspiel`
+  * `umgangssprachlich`
+  * `übertragen`
+* MWA:
+
+  * Marker über `letter-mwa.svg`.
+  * Marker über Tooltip `Mehrwortausdruck`.
+  * Format `Phrase (MWA) = Paraphrase`.
+* Beispiele:
+
+  * Beispiele bleiben bei der passenden Lesart.
+  * Keine globale Sammlung auf erster Bedeutung.
+  * Nur `dwdswb-belegtext`.
+* Idiome:
+
+  * Relation-Block `relation-block-<n>-mwa`.
+  * Nur `/wb/`-Links.
+  * Deduplizierung mit stabiler Reihenfolge.
+* Etymologie:
+
+  * `etymwb-entry` je Homograph.
+  * Herkunftstexte werden nicht zwischen Homographen vermischt.
+* Textbereinigung:
+
+  * Non-Breaking-Spaces.
+  * Spaces vor Satzzeichen.
+  * Spaces in Klammern.
+  * Spaces in `⟨...⟩`.
+* Fehlerfall:
+
+  * `Nixdaexistiert` -> `ok=false`, `error=No matches found`.
+
+### Hinweise zu den alten Expected-Dateien
+
+Die alten `.el`-Expected-Dateien sind keine 1:1-Rust-Snapshot-Vorlage, aber sie sind die fachliche Oracle-Referenz.
+
+Besonders hilfreiche Dateien:
+
+* `../../emacs-lisp/tests/files/dwds/Bank/dwds-Bank-definitions-expected.el`
+* `../../emacs-lisp/tests/files/dwds/Bank/dwds-Bank-examples-expected.el`
+* `../../emacs-lisp/tests/files/dwds/Bank/dwds-Bank-origin-expected.el`
+* `../../emacs-lisp/tests/files/dwds/Bank/dwds-Bank-idioms-expected.el`
+* `../../emacs-lisp/tests/files/dwds/Haus/dwds-Haus-definitions-expected.el`
+* `../../emacs-lisp/tests/files/dwds/Haus/dwds-Haus-examples-expected.el`
+* `../../emacs-lisp/tests/files/dwds/Haus/dwds-Haus-origin-expected.el`
+* `../../emacs-lisp/tests/files/dwds/springen/dwds-springen-definitions-expected.el`
+* `../../emacs-lisp/tests/files/dwds/springen/dwds-springen-examples-expected.el`
+* `../../emacs-lisp/tests/files/dwds/Wolke/dwds-Wolke-definitions-expected.el`
+* `../../emacs-lisp/tests/files/dwds/Zaun/dwds-Zaun-definitions-expected.el`
+* `../../emacs-lisp/tests/files/dwds/verlieben/dwds-verlieben-definitions-expected.el`
+* `../../emacs-lisp/tests/files/dwds/Nixdaexistiert/dwds-Nixdaexistiert-definitions-expected.el`
+
+Die Rust-Snapshots sollen die gleichen fachlichen Daten enthalten, aber im vorhandenen Rust-Snapshot-Stil.
+
+### Workflow für Codex
+
+Beim Umsetzen:
+
+1. `.project/agents/AGENTS.md` und `.project/agents/repository.md` lesen.
+2. Task-Datei nach Template anlegen, zum Beispiel `.project/tasks/2026-06-09--dwds-parser.md`.
+3. Diese TODO-Heading beim Start mit der Task-Datei verlinken.
+4. DWDS-Parser implementieren.
+5. Fixtures/Snapshots/Unit-Tests ergänzen.
+6. Relevante Checks ausführen.
+7. Task-Datei mit Result, Changes, Checks und Open Points aktualisieren.
+8. TODO-Status am Ende auf `REVIEW` setzen.
+
+### Akzeptanzkriterien
+
+* DWDS-Live-Lookups verwenden `https://www.dwds.de/wb/<lemma>`.
+* Die kanonische DWDS-URL wird aus dem HTML gelesen, falls vorhanden.
+* `lookup(client, query)` bleibt für HTTP zuständig.
+* Parser-Logik ist unabhängig vom HTTP-Code testbar.
+* Tests laufen offline.
+* Lokale DWDS-HTML-Fixtures werden verwendet.
+* DWDS-Snapshots existieren unter `tests/snapshots/dwds/`.
+* HTML ohne `dwdswb-artikel` ergibt `ok=false` und `error=No matches found`.
+* `Bank` ergibt zwei `DictionaryEntry`-Einträge.
+* Homograph-IDs werden in `DictionaryEntry.homograph` gespeichert.
+* `DictionaryEntry.headword`, `title`, `part_of_speech`, `grammar`, `etymology`, `idioms`, `url` und `senses` werden sinnvoll befüllt.
+* DWDS-Synonyme bleiben leer.
+* Lesarten werden rekursiv als `Sense`/`subsenses` abgebildet.
+* DWDS-Lesart-IDs wie `d-1-1` werden in `Sense.source_id` erhalten.
+* Labels wie `1.`, `a)`, `●` werden stabil gesetzt.
+* Definitionen werden aus den richtigen DWDS-Blöcken extrahiert.
+* Verweise mit `data-content` werden korrekt als Definitionstext aufgelöst.
+* Qualifier werden als `Sense.qualifiers` extrahiert.
+* Beispiele werden der passenden Lesart zugeordnet.
+* MWA-Definitionen werden als Definitionstext erkannt.
+* Idiome aus Relation-Blöcken werden als `DictionaryEntry.idioms` extrahiert.
+* Herkunft wird pro Homograph extrahiert.
+* Fehlende Sektionen führen nicht zu Fehlern oder Panics.
+* Navigation, Buttons, Quellen-Metadaten und Layout-Artefakte erscheinen nicht in Snapshots.
+* Snapshot-Ausgaben sind stabil, deterministisch und gut diffbar.
+* `cargo test dwds` läuft erfolgreich.
+* Wenn möglich, läuft auch `cargo test` erfolgreich.
+* Ein kurzer manueller Check mit `cargo run -- Bank --sources dwds --json` liefert zwei DWDS-Entries.
+
+### Out of scope
+
+* Kein Lemmatizer.
+* Kein Caching.
+* Kein Rate Limiting.
+* Keine DWDS-Suchseitenlogik.
+* Keine DWDS-Synonym-Implementierung.
+* Keine große CLI-Überarbeitung.
+* Keine Änderungen an OpenThesaurus, Wiktionary oder Duden, außer wenn ein winziger gemeinsamer Test-/Snapshot-Helfer wirklich sinnvoll ist.
+* Keine vollständige 1:1-Kompatibilität mit dem alten Emacs-Lisp-Plist-Output.
+* Keine Live-Requests in Tests.
+* Keine Umstellung auf `insta` oder ein neues Snapshot-Framework.
 
 # Abgeschlossen
 

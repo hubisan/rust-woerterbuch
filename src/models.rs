@@ -262,10 +262,6 @@ impl SynonymGroup {
     }
 }
 
-pub fn normalize_text(text: &str) -> String {
-    text.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
 pub fn dedupe(values: impl IntoIterator<Item = String>) -> Vec<String> {
     let mut out = Vec::new();
     for value in values {

@@ -10,22 +10,53 @@ const DUDEN_BASE: &str = "https://www.duden.de";
 
 pub async fn lookup(client: &Client, query: &str) -> Result<SourceResult> {
     let entry_url = build_url(query);
-    let (status, body) = fetch_response(client, &entry_url).await?;
+    let search_url = build_search_url(query);
 
-    if status == StatusCode::NOT_FOUND {
-        return lookup_via_search(client, query).await;
-    }
-    if !status.is_success() {
-        return Err(http_error(status, &body));
+    let (entry_response, search_response) = futures::join!(
+        fetch_response(client, &entry_url),
+        fetch_response(client, &search_url),
+    );
+
+    let search_urls = match search_response {
+        Ok((StatusCode::NOT_FOUND, _)) => Vec::new(),
+        Ok((status, body)) if status.is_success() => {
+            parse_search_results(&Html::parse_document(&body), query)
+        }
+        Ok((_status, _body)) => Vec::new(),
+        Err(_err) => Vec::new(),
+    };
+
+    if search_urls.len() > 1 {
+        return lookup_entries_from_urls(client, query, search_urls).await;
     }
 
-    match parse_entry(query, &entry_url, &body, 1) {
-        Some(entry) => Ok(SourceResult::ok(
-            Source::Duden,
-            Some(UrlValue::One(entry_url)),
-            vec![entry],
-        )),
-        None => Ok(no_match_result()),
+    match entry_response {
+        Ok((StatusCode::NOT_FOUND, _)) => {
+            if search_urls.is_empty() {
+                Ok(no_match_result())
+            } else {
+                lookup_entries_from_urls(client, query, search_urls).await
+            }
+        }
+        Ok((status, body)) if !status.is_success() => Err(http_error(status, &body)),
+        Ok((_status, body)) => match parse_entry(query, &entry_url, &body, 1) {
+            Some(entry) => Ok(SourceResult::ok(
+                Source::Duden,
+                Some(UrlValue::One(entry_url)),
+                vec![entry],
+            )),
+            None if !search_urls.is_empty() => {
+                lookup_entries_from_urls(client, query, search_urls).await
+            }
+            None => Ok(no_match_result()),
+        },
+        Err(err) => {
+            if search_urls.is_empty() {
+                Err(err)
+            } else {
+                lookup_entries_from_urls(client, query, search_urls).await
+            }
+        }
     }
 }
 
@@ -46,22 +77,11 @@ pub fn build_search_url(lemma: &str) -> String {
     )
 }
 
-async fn lookup_via_search(client: &Client, query: &str) -> Result<SourceResult> {
-    let search_url = build_search_url(query);
-    let (status, body) = fetch_response(client, &search_url).await?;
-
-    if status == StatusCode::NOT_FOUND {
-        return Ok(no_match_result());
-    }
-    if !status.is_success() {
-        return Err(http_error(status, &body));
-    }
-
-    let urls = parse_search_results(&Html::parse_document(&body), query);
-    if urls.is_empty() {
-        return Ok(no_match_result());
-    }
-
+async fn lookup_entries_from_urls(
+    client: &Client,
+    query: &str,
+    urls: Vec<String>,
+) -> Result<SourceResult> {
     let pages = try_join_all(urls.iter().map(|url| async move {
         let (status, body) = fetch_response(client, url).await?;
         if !status.is_success() {
