@@ -152,29 +152,32 @@ impl DictionaryEntry {
     }
 
     pub fn retain_sections(&mut self, wanted: &[Section]) {
-        if !wanted.contains(&Section::Origin) {
+        let keep_definitions = wanted.contains(&Section::Definitions);
+        let keep_examples = wanted.contains(&Section::Examples);
+        let keep_synonyms = wanted.contains(&Section::Synonyms);
+        let keep_origin = wanted.contains(&Section::Origin);
+        let keep_idioms = wanted.contains(&Section::Idioms);
+
+        if !keep_origin {
             self.etymology = None;
         }
-        if !wanted.contains(&Section::Idioms) {
+        if !keep_idioms {
             self.idioms.clear();
-            for sense in &mut self.senses {
-                sense.clear_idioms_recursive();
-            }
         }
-        if !wanted.contains(&Section::Synonyms) {
+        if !keep_synonyms {
             self.synonym_groups.clear();
-            for sense in &mut self.senses {
-                sense.clear_synonyms_recursive();
-            }
         }
-        if !wanted.contains(&Section::Examples) {
-            for sense in &mut self.senses {
-                sense.clear_examples_recursive();
-            }
+
+        for sense in &mut self.senses {
+            sense.retain_sections_recursive(
+                keep_definitions,
+                keep_examples,
+                keep_synonyms,
+                keep_idioms,
+            );
         }
-        if !wanted.contains(&Section::Definitions) {
-            self.senses.clear();
-        }
+
+        self.senses.retain(Sense::has_requested_content_recursive);
     }
 }
 
@@ -220,25 +223,50 @@ impl Sense {
         }
     }
 
-    fn clear_examples_recursive(&mut self) {
-        self.examples.clear();
-        for child in &mut self.subsenses {
-            child.clear_examples_recursive();
+    fn retain_sections_recursive(
+        &mut self,
+        keep_definitions: bool,
+        keep_examples: bool,
+        keep_synonyms: bool,
+        keep_idioms: bool,
+    ) {
+        if !keep_definitions {
+            self.definition = None;
         }
+        if !keep_examples {
+            self.examples.clear();
+        }
+        if !keep_synonyms {
+            self.synonyms.clear();
+        }
+        if !keep_idioms {
+            self.idioms.clear();
+        }
+
+        for child in &mut self.subsenses {
+            child.retain_sections_recursive(
+                keep_definitions,
+                keep_examples,
+                keep_synonyms,
+                keep_idioms,
+            );
+        }
+
+        self.subsenses
+            .retain(Sense::has_requested_content_recursive);
     }
 
-    fn clear_idioms_recursive(&mut self) {
-        self.idioms.clear();
-        for child in &mut self.subsenses {
-            child.clear_idioms_recursive();
-        }
-    }
-
-    fn clear_synonyms_recursive(&mut self) {
-        self.synonyms.clear();
-        for child in &mut self.subsenses {
-            child.clear_synonyms_recursive();
-        }
+    fn has_requested_content_recursive(&self) -> bool {
+        self.definition
+            .as_deref()
+            .is_some_and(|value| !value.is_empty())
+            || !self.examples.is_empty()
+            || !self.idioms.is_empty()
+            || !self.synonyms.is_empty()
+            || self
+                .subsenses
+                .iter()
+                .any(Sense::has_requested_content_recursive)
     }
 }
 
@@ -259,6 +287,186 @@ impl SynonymGroup {
             items,
             ..Self::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_entry() -> DictionaryEntry {
+        DictionaryEntry {
+            id: 1,
+            homograph: None,
+            headword: "Bank".to_owned(),
+            title: Some("Bank".to_owned()),
+            part_of_speech: Some("Substantiv".to_owned()),
+            grammar: Some("f".to_owned()),
+            etymology: Some("aus dem Italienischen".to_owned()),
+            idioms: vec!["auf die lange Bank schieben".to_owned()],
+            synonym_groups: vec![SynonymGroup::items(vec!["Geldinstitut".to_owned()])],
+            url: Some("https://example.test/bank".to_owned()),
+            senses: vec![
+                Sense {
+                    id: 1,
+                    source_id: Some("1".to_owned()),
+                    label: Some("1".to_owned()),
+                    definition: Some("Sitzgelegenheit".to_owned()),
+                    qualifiers: vec!["allgemein".to_owned()],
+                    examples: vec!["Sie sitzt auf der Bank.".to_owned()],
+                    idioms: vec!["unter der Bank".to_owned()],
+                    synonyms: vec!["Sitz".to_owned()],
+                    image_url: Some("https://example.test/bank.jpg".to_owned()),
+                    subsenses: vec![Sense {
+                        id: 2,
+                        source_id: Some("1a".to_owned()),
+                        label: Some("1a".to_owned()),
+                        definition: Some("ohne Lehne".to_owned()),
+                        qualifiers: Vec::new(),
+                        examples: vec!["Die Bank im Park".to_owned()],
+                        idioms: vec!["auf der Bank sitzen".to_owned()],
+                        synonyms: vec!["Parkbank".to_owned()],
+                        image_url: None,
+                        subsenses: Vec::new(),
+                    }],
+                },
+                Sense {
+                    id: 3,
+                    source_id: Some("2".to_owned()),
+                    label: Some("2".to_owned()),
+                    definition: Some("Geldinstitut".to_owned()),
+                    qualifiers: Vec::new(),
+                    examples: Vec::new(),
+                    idioms: Vec::new(),
+                    synonyms: vec!["Kreditinstitut".to_owned()],
+                    image_url: None,
+                    subsenses: Vec::new(),
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn definitions_only_keeps_definitions() {
+        let mut entry = sample_entry();
+
+        entry.retain_sections(&[Section::Definitions]);
+
+        assert_eq!(entry.etymology, None);
+        assert!(entry.idioms.is_empty());
+        assert!(entry.synonym_groups.is_empty());
+        assert_eq!(entry.senses.len(), 2);
+        assert!(entry.senses.iter().all(|sense| sense.examples.is_empty()));
+        assert!(entry.senses.iter().all(|sense| sense.idioms.is_empty()));
+        assert!(entry.senses.iter().all(|sense| sense.synonyms.is_empty()));
+        assert_eq!(
+            entry.senses[0].definition.as_deref(),
+            Some("Sitzgelegenheit")
+        );
+        assert_eq!(
+            entry.senses[0].subsenses[0].definition.as_deref(),
+            Some("ohne Lehne")
+        );
+    }
+
+    #[test]
+    fn examples_only_keeps_example_bearing_senses_without_definitions() {
+        let mut entry = sample_entry();
+
+        entry.retain_sections(&[Section::Examples]);
+
+        assert_eq!(entry.etymology, None);
+        assert!(entry.idioms.is_empty());
+        assert!(entry.synonym_groups.is_empty());
+        assert_eq!(entry.senses.len(), 1);
+        assert_eq!(entry.senses[0].definition, None);
+        assert_eq!(
+            entry.senses[0].examples,
+            vec!["Sie sitzt auf der Bank.".to_owned()]
+        );
+        assert_eq!(entry.senses[0].subsenses.len(), 1);
+        assert_eq!(
+            entry.senses[0].subsenses[0].examples,
+            vec!["Die Bank im Park".to_owned()]
+        );
+        assert_eq!(entry.senses[0].source_id.as_deref(), Some("1"));
+        assert_eq!(entry.senses[0].label.as_deref(), Some("1"));
+    }
+
+    #[test]
+    fn idioms_only_keeps_entry_and_sense_level_idioms() {
+        let mut entry = sample_entry();
+
+        entry.retain_sections(&[Section::Idioms]);
+
+        assert_eq!(entry.idioms, vec!["auf die lange Bank schieben".to_owned()]);
+        assert!(entry.synonym_groups.is_empty());
+        assert_eq!(entry.senses.len(), 1);
+        assert_eq!(entry.senses[0].definition, None);
+        assert_eq!(entry.senses[0].idioms, vec!["unter der Bank".to_owned()]);
+        assert_eq!(
+            entry.senses[0].subsenses[0].idioms,
+            vec!["auf der Bank sitzen".to_owned()]
+        );
+    }
+
+    #[test]
+    fn synonyms_only_keeps_entry_and_sense_level_synonyms() {
+        let mut entry = sample_entry();
+
+        entry.retain_sections(&[Section::Synonyms]);
+
+        assert_eq!(entry.synonym_groups.len(), 1);
+        assert_eq!(entry.senses.len(), 2);
+        assert_eq!(entry.senses[0].definition, None);
+        assert_eq!(entry.senses[0].synonyms, vec!["Sitz".to_owned()]);
+        assert_eq!(
+            entry.senses[0].subsenses[0].synonyms,
+            vec!["Parkbank".to_owned()]
+        );
+        assert_eq!(entry.senses[1].synonyms, vec!["Kreditinstitut".to_owned()]);
+    }
+
+    #[test]
+    fn origin_only_keeps_etymology() {
+        let mut entry = sample_entry();
+
+        entry.retain_sections(&[Section::Origin]);
+
+        assert_eq!(entry.etymology.as_deref(), Some("aus dem Italienischen"));
+        assert!(entry.idioms.is_empty());
+        assert!(entry.synonym_groups.is_empty());
+        assert!(entry.senses.is_empty());
+    }
+
+    #[test]
+    fn examples_and_synonyms_can_survive_without_definitions() {
+        let mut entry = sample_entry();
+
+        entry.retain_sections(&[Section::Examples, Section::Synonyms]);
+
+        assert_eq!(entry.senses.len(), 2);
+        assert_eq!(entry.senses[0].definition, None);
+        assert_eq!(
+            entry.senses[0].examples,
+            vec!["Sie sitzt auf der Bank.".to_owned()]
+        );
+        assert_eq!(entry.senses[0].synonyms, vec!["Sitz".to_owned()]);
+        assert_eq!(entry.senses[1].definition, None);
+        assert!(entry.senses[1].examples.is_empty());
+        assert_eq!(entry.senses[1].synonyms, vec!["Kreditinstitut".to_owned()]);
+    }
+
+    #[test]
+    fn empty_sections_prune_all_content_without_panicking() {
+        let mut entry = sample_entry();
+
+        entry.retain_sections(&[]);
+
+        assert_eq!(entry.etymology, None);
+        assert!(entry.idioms.is_empty());
+        assert!(entry.synonym_groups.is_empty());
+        assert!(entry.senses.is_empty());
     }
 }
 

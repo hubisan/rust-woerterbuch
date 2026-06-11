@@ -16,22 +16,40 @@ pub fn print_human(response: &LookupResponse) {
 fn print_source(source: &SourceResult) {
     println!("\n== {:?} ==", source.source);
 
-    if !source.ok {
-        println!(
-            "Error: {}",
-            source.error.as_deref().unwrap_or("unknown error")
-        );
-        return;
-    }
-
-    if source.entries.is_empty() {
-        println!("No results.");
+    if let Some(message) = source_status_message(source) {
+        println!("{message}");
         return;
     }
 
     for entry in &source.entries {
         print_entry(entry);
     }
+}
+
+fn source_status_message(source: &SourceResult) -> Option<String> {
+    if !source.ok {
+        let error = source.error.as_deref().unwrap_or("unknown error");
+        return Some(if is_not_found_message(error) {
+            "No entry found on source.".to_owned()
+        } else {
+            format!("Error: {error}")
+        });
+    }
+
+    if source.entries.is_empty() {
+        return Some(if source.url.is_none() {
+            "Skipped: source does not support requested sections.".to_owned()
+        } else {
+            "No content for requested sections.".to_owned()
+        });
+    }
+
+    None
+}
+
+fn is_not_found_message(error: &str) -> bool {
+    let normalized = error.to_ascii_lowercase();
+    normalized.contains("no matches found")
 }
 
 fn print_entry(entry: &DictionaryEntry) {
@@ -111,5 +129,78 @@ fn print_synonym_groups(title: &str, groups: &[SynonymGroup]) {
             Some(sense) => println!("  - Sense {sense}: {}", group.items.join(", ")),
             None => println!("  - {}", group.items.join(", ")),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{Source, UrlValue};
+
+    #[test]
+    fn source_status_reports_skipped_sources_clearly() {
+        let source = SourceResult::ok(Source::Dwds, None, Vec::new());
+
+        assert_eq!(
+            source_status_message(&source).as_deref(),
+            Some("Skipped: source does not support requested sections.")
+        );
+    }
+
+    #[test]
+    fn source_status_reports_filtered_empty_results_clearly() {
+        let source = SourceResult::ok(
+            Source::Duden,
+            Some(UrlValue::One("https://example.test".to_owned())),
+            Vec::new(),
+        );
+
+        assert_eq!(
+            source_status_message(&source).as_deref(),
+            Some("No content for requested sections.")
+        );
+    }
+
+    #[test]
+    fn source_status_normalizes_not_found_errors() {
+        let source = SourceResult {
+            source: Source::Wiktionary,
+            ok: false,
+            url: Some(UrlValue::One("https://example.test".to_owned())),
+            entries: Vec::new(),
+            error: Some("No matches found".to_owned()),
+        };
+
+        assert_eq!(
+            source_status_message(&source).as_deref(),
+            Some("No entry found on source.")
+        );
+    }
+
+    #[test]
+    fn source_status_keeps_real_errors_visible() {
+        let source = SourceResult {
+            source: Source::Dwds,
+            ok: false,
+            url: None,
+            entries: Vec::new(),
+            error: Some("HTTP error: 404 Not Found".to_owned()),
+        };
+
+        assert_eq!(
+            source_status_message(&source).as_deref(),
+            Some("Error: HTTP error: 404 Not Found")
+        );
+    }
+
+    #[test]
+    fn source_status_is_none_for_sources_with_entries() {
+        let source = SourceResult::ok(
+            Source::Openthesaurus,
+            Some(UrlValue::One("https://example.test".to_owned())),
+            vec![DictionaryEntry::new(1, "Bank")],
+        );
+
+        assert_eq!(source_status_message(&source), None);
     }
 }

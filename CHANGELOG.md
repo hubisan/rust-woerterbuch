@@ -4,6 +4,8 @@ This file records completed changes.
 
 ## Unreleased
 
+- `CHANGED`: Clarified human-readable source status messages so skipped sections, missing entries, and real errors are shown differently.
+- `FIXED`: Fixed `--sections` filtering so requested nested examples, idioms, and synonyms are preserved and unsupported source/section combinations are skipped cleanly.
 - `ADDED`: Added structured parsers and offline snapshot tests for Duden, Wiktionary, OpenThesaurus, and DWDS.
 - `CHANGED`: Fetch Duden entry and search pages in parallel so homographs can be detected earlier while treating search failures as non-fatal when the direct entry lookup succeeds.
 

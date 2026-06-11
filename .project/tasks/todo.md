@@ -1,7 +1,7 @@
 # TODOs
 
 This file is inspired by Org mode. Task headings may use these TODO keywords:
-`TODO`, `NEXT`, `WAIT`, `REVIEW`, `CONTINUE`, `DONE`, `CANCEL`.
+`TODO`, `NEXT`, `WAIT`, `REVIEW`, `CONTINUE`, `D#ONE`, `CANCEL`.
 
 This repository uses AI agents to assist with development.
 
@@ -16,34 +16,218 @@ Important files:
 
 Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiedenen Quellen — Duden, DWDS, Wiktionary und OpenThesaurus — via Scraping aggregiert, wird in ein performantes, asynchrones Rust-CLI-Tool umgewandelt.
 
-## Warum dieser Umstieg?
+# Projekt finalisieren
 
-1. **AI-Ready:** Externe KI-Agenten und LLMs können das Tool nahtlos als CLI-Befehl aufrufen und strukturierte JSON-Daten auslesen.
-2. **Performance & Concurrency:** Die vier Quellen werden in Rust dank `tokio` absolut parallel abgefragt und geparst, ohne die Single-Threaded Event-Loop von Emacs zu belasten.
-3. **Schlanke Architektur:** Emacs dient am Ende nur noch als UI-Frontend, das die JSON-Ausgabe des Rust-CLI einliest und formatiert.
-4. **Neues lernen:** Ein perfektes Einstiegsprojekt, um Rusts modernste Konzepte — Ownership, Pattern Matching und Async — in einem realen Szenario anzuwenden.
+## TODO Mit ChatGPT weiteres Vorgehen definieren
 
-## Strategische Design-Entscheidungen für Stabilität & Fairness
+## TODO Macht Emacs Module überhaupt Sinn?
 
-- **Kein Lemmatizer zum Start:** Um das Projekt maximal schlank zu halten und eine Überkomplexität beim Einstieg zu vermeiden, wird bewusst auf einen separaten Lemmatizer verzichtet. Die Suchanfragen gehen direkt an die jeweiligen Backends.
-- **Unauffälliger User-Agent:** Ein Standard-Browser-Header verhindert Blockierungen und sorgt für stabilen Traffic bei den Live-Abfragen.
-- **Optimierte Datenquellen für Duden & Wiktionary:** Für den Duden wird die extrem schlanke AMP-Seite genutzt. Für Wiktionary wird auf die offizielle REST-HTML-API umgestellt.
+Kann ja einfach CLI und dann Json parsen, ist schnell.
 
-### Architektur-Learning: Wiktionary REST-API
+# Abgeschlossen
 
-In der ursprünglichen Emacs-Lisp-Realisation bestand noch keine Kenntnis über die Existenz der offiziellen Wikimedia-REST-HTML-API unter `/api/rest_v1/page/html/`. Damals wurde das gesamte, überladene Web-HTML gescraped.
+### DONE [Konsistente Statusdarstellung im Human-Output](./2026-06-11--human-output-statuses.md)
 
-Der Wechsel auf den REST-Endpunkt liefert nun das nackte Inhalts-HTML komplett ohne Wikipedia-Design-Ballast — keine Sidebars, Navigationsleisten oder Skripte.
+Ja, das ist aktuell tatsächlich missverständlich.
+Im Human-Output gibt es heute nur diese grobe Unterscheidung in src/format.rs (line 16):
+No results. wenn ok = true, aber entries leer sind
+Error: ... wenn ok = false
+Dadurch fallen im Moment zwei semantisch verschiedene Fälle zusammen:
+bewusst übersprungen, z. B. DWDS bei --sections synonyms
+erfolgreiche Quelle, aber nach Filterung bleibt nichts übrig
+Beides erscheint aktuell als No results..
+Ein 404 erscheint nicht einheitlich für alle Quellen:
+Wiktionary: Error: No matches found in src/sources/wiktionary.rs (line 26)
+Duden: bei Entry-404 meist ebenfalls Error: No matches found, sonst bei anderem HTTP-Fehler Error: HTTP error: ... in src/sources/duden.rs (line 33)
+DWDS: echtes HTTP-404 würde derzeit eher als Reqwest-Fehlertext hochkommen, weil fetch_html(...).error_for_status()? verwendet wird in src/http.rs (line 16); wenn die Seite aber 200 liefert und nur kein Artikel da ist, dann Error: No matches found
+Inhaltlich wäre sauberer, drei Fälle getrennt auszugeben:
+Skipped: source does not support requested sections.
+No entry found on source.
+Error: HTTP 404 ... oder allgemeiner Error: ...
+Der aktuelle Text ist also eher ein UI-Problem als ein Datenmodell-Problem. Wenn du willst, mache ich als nächsten kleinen Follow-up genau diese Statusdarstellung im Human-Output konsistent.
 
-**Achtung bei Homonymen:** Da die API den gesamten Artikeltext liefert, sind bei Wörtern mit mehreren Bedeutungen, zum Beispiel `Bank`, auch mehrere Wortart-Blöcke — Substantiv, feminin, Bänke vs. Banken — untereinander auf derselben Seite enthalten. Der Parser muss darauf ausgelegt sein, alle Sektionen via Schleife beziehungsweise Vektor zu erfassen.
+### DONE [Clarify and fix section filtering semantics](./2026-06-11--section-filtering-semantics.md)
 
-## Schritt 2: Die Parser einzeln übersetzen — Der Kern
+#### Context
 
-Jetzt übersetzen wir die Scraping-Logik der Backends nacheinander von Elisp nach Rust. Wir starten mit OpenThesaurus.
+The Rust CLI currently accepts `--sections definitions,examples,synonyms,origin,idioms`.
 
-## REVIEW DWDS: HTML-Parser + Snapshot-Tests
+At the moment, every selected source performs its normal lookup and parser work first. Afterwards, `SourceResult::retain_sections` removes fields that were not requested.
 
-Task file: [./2026-06-09--dwds-parser.md](./2026-06-09--dwds-parser.md)
+This means `--sections` is currently an output filter, not true section-level scraping.
+
+The old Emacs Lisp implementation passed `sections` into source-specific fetch/parse functions, but the current Rust architecture deliberately centralized filtering in `src/models.rs`.
+
+#### Goal
+
+Define and implement stable section semantics:
+
+* Keep `--sections` as a public CLI/API option.
+* Treat it primarily as an output projection/filter.
+* Avoid over-optimizing parser internals where the source must load a complete HTML/API response anyway.
+* Prevent requested sections from disappearing accidentally when another related section is disabled.
+* Add cheap source-level request skipping where it is clearly correct.
+
+#### Decision
+
+Do not remove `--sections`.
+
+Do not rewrite all source parsers to scrape only individual sections from already-downloaded pages.
+
+Reasoning:
+
+* Duden, DWDS and Wiktionary each require fetching a whole page/API response for a lookup.
+* The expensive part is the HTTP request, not extracting a few extra DOM nodes.
+* Section-aware parser branching would add complexity and risk missing data.
+* `--sections` is still valuable for smaller JSON output and Emacs/UI consumers.
+
+However, implement cheap request-level optimization where a source only supports sections that were not requested.
+
+Example:
+
+* `OpenThesaurus` only provides synonyms.
+* If `synonyms` is not requested, skip the OpenThesaurus request entirely.
+
+#### Required Changes
+
+##### 1. Fix `retain_sections` so requested nested data is preserved
+
+Current behavior clears all `senses` when `definitions` is not requested:
+
+```rust
+if !wanted.contains(&Section::Definitions) {
+    self.senses.clear();
+}
+```
+
+This is wrong for requests such as:
+
+```bash
+cargo run -- Bank --sections examples
+cargo run -- Bank --sections idioms
+cargo run -- Bank --sections synonyms
+```
+
+because examples, idioms and sense-level synonyms can live inside `Sense`.
+
+Change the logic so that disabling `definitions` only removes the definition text, not the whole sense.
+
+Expected behavior:
+
+* If `definitions` is not requested:
+
+  * set `sense.definition = None`
+  * keep `sense.label`, `source_id`, and nested content needed to locate examples/idioms/synonyms
+* If `examples` is requested:
+
+  * keep senses that contain examples
+* If `idioms` is requested:
+
+  * keep entry-level idioms and sense-level idioms
+* If `synonyms` is requested:
+
+  * keep entry-level synonym groups and sense-level synonyms
+* After pruning, remove empty senses/subsenses only if they contain no requested content and no useful child content.
+
+##### 2. Add source capability checks
+
+Add a helper in `src/sources.rs` or on `Source`:
+
+```rust
+fn source_supports_any_section(source: Source, sections: &[Section]) -> bool
+```
+
+Suggested mapping:
+
+* `OpenThesaurus`: `Synonyms`
+* `Dwds`: `Definitions`, `Examples`, `Origin`, `Idioms`
+* `Duden`: `Definitions`, `Examples`, `Synonyms`, `Origin`, `Idioms`
+* `Wiktionary`: `Definitions`, `Examples`, `Synonyms`, `Origin`, `Idioms`
+
+Use it before starting source jobs or inside `lookup_source`.
+
+If a source supports none of the requested sections, do not perform HTTP.
+
+Preferred behavior:
+
+* Return a successful empty `SourceResult`, or omit the source result.
+* Choose one behavior and document it.
+* For stable output shape, prefer returning an empty `ok: true` result with no entries.
+
+Example:
+
+```rust
+if !source_supports_any_section(source, sections) {
+    return SourceResult::ok(source, None, Vec::new());
+}
+```
+
+##### 3. Keep source parsers simple
+
+Do not pass `sections` into all parser functions unless there is a proven performance issue.
+
+Keep parsers source-complete:
+
+```rust
+duden::lookup(client, query).await
+dwds::lookup(client, query).await
+wiktionary::lookup(client, query).await
+openthesaurus::lookup(client, query).await
+```
+
+Then apply central filtering.
+
+Exception:
+
+* OpenThesaurus can be skipped before lookup when `synonyms` is not requested.
+
+##### 4. Add tests for section combinations
+
+Add tests for `retain_sections` using synthetic `DictionaryEntry` / `Sense` data.
+
+Required cases:
+
+* `definitions` only keeps definitions, removes examples, idioms, synonyms, origin.
+* `examples` only keeps example-bearing senses, does not delete all senses.
+* `idioms` only keeps entry-level and sense-level idioms.
+* `synonyms` only keeps entry-level synonym groups and sense-level synonyms.
+* `origin` only keeps etymology.
+* `examples,synonyms` keeps both without definitions.
+* empty sections returns no content but does not panic.
+
+Add at least one integration/snapshot-style test for CLI JSON behavior if the existing test structure makes that practical.
+
+#### Acceptance Criteria
+
+* `cargo test` passes.
+* `cargo run -- Bank --json --sections examples` returns examples when the source contains examples.
+* `cargo run -- Bank --json --sections synonyms` does not request OpenThesaurus unless synonyms are requested.
+* `cargo run -- Bank --json --sections definitions` does not include examples, idioms, synonyms or origin.
+* `cargo run -- Bank --json --sections examples` does not include definition text unless definitions were also requested.
+* No requested section is lost merely because another section is disabled.
+* Source parsers remain independently testable with local fixtures.
+* No live requests are introduced into tests.
+
+#### Out of scope
+
+* Rewriting Duden/DWDS/Wiktionary parsers to parse only individual sections.
+* Changing the JSON model shape.
+* Removing the `--sections` CLI option.
+* Benchmarking parser-level micro-optimizations unless later evidence shows this is needed.
+
+#### Open Points
+
+* Should skipped sources appear as empty successful results, or be omitted from `results`?
+  * Recommendation: keep them as empty successful results for stable source order.
+  -> OK
+* Should `origin` include only `etymology`, or also grammar/history-like metadata from sources?
+
+  * Recommendation: keep `origin` mapped only to `etymology`.
+  -> OK
+
+## DONE DWDS: HTML-Parser + Snapshot-Tests
+
+Task file: [./archive/2026-06-09--dwds-parser.md](./archive/2026-06-09--dwds-parser.md)
 
 Portiere die alte DWDS-Scraping-Logik aus Emacs Lisp nach Rust und ersetze den aktuellen groben DWDS-Stub durch einen robusten Parser mit deterministischen Offline-Snapshot-Tests.
 
@@ -51,7 +235,7 @@ DWDS ist die letzte noch fehlende Quelle. Der aktuelle Rust-Code in `src/sources
 
 Maßgeblich ist die fachliche Logik aus `woerterbuch-dwds.el`, idiomatisch in Rust umgesetzt und auf die vorhandenen Rust-Modelle gemappt.
 
-### Wichtigste geprüfte Grundlage
+#### Wichtigste geprüfte Grundlage
 
 Unbedingt zuerst lesen:
 
@@ -93,7 +277,7 @@ Aus `woerterbuch-dwds.el` sind insbesondere diese Funktionen relevant und sollen
 - `woerterbuch-dwds--parse-dom`
 - `woerterbuch-dwds--fetch-callback`
 
-### Ziel
+#### Ziel
 
 Der DWDS-Parser soll DWDS-HTML in die vorhandenen Rust-Modelle überführen:
 
@@ -104,7 +288,7 @@ Der DWDS-Parser soll DWDS-HTML in die vorhandenen Rust-Modelle überführen:
 
 DWDS liefert in der alten Implementierung keine Synonyme. `synonym_groups` soll für DWDS daher leer bleiben, außer im aktuellen DWDS-HTML gibt es später eine eindeutig zuverlässige Synonym-Struktur. Für diese Aufgabe sind Definitionen, Beispiele, Herkunft und Idiome maßgeblich.
 
-### Architektur
+#### Architektur
 
 Halte den Scope möglichst auf `src/sources/dwds.rs` begrenzt.
 
@@ -121,7 +305,7 @@ Erwartete Struktur:
 
 Die zentrale Section-Filterung existiert bereits über `SourceResult::retain_sections` in `src/models.rs`. Daher in DWDS nicht wieder das alte Elisp-`sections`-Argument nachbauen. Der Rust-DWDS-Parser soll grundsätzlich alle gefundenen DWDS-Daten extrahieren; die gewünschte Auswahl übernimmt danach die bestehende zentrale Logik.
 
-### Live-Lookup und URL
+#### Live-Lookup und URL
 
 Portiere die URL-Logik aus `woerterbuch-dwds--build-url`.
 
@@ -146,7 +330,7 @@ Bank -> https://www.dwds.de/wb/Bank
 Haus -> https://www.dwds.de/wb/Haus
 ```
 
-### HTTP-Verhalten
+#### HTTP-Verhalten
 
 DWDS kann bei nicht vorhandenen Wörtern eine normale HTML-Seite ohne `dwdswb-artikel` liefern. Das ist fachlich ein No-Match, nicht zwingend ein HTTP-Fehler.
 
@@ -159,7 +343,7 @@ Erwartung:
 
 Die alte Emacs-Lisp-Implementierung nutzte eigene DWDS-Header. Der globale Rust-Client setzt bereits einen Browser-User-Agent. Prüfe trotzdem, ob DWDS live stabil genug ist. Falls nötig, ergänze zentrale HTTP-Header nur allgemein und nicht DWDS-spezifisch, sofern das zur bestehenden Architektur passt.
 
-### Aktueller Rust-Stub: bekannte Probleme
+#### Aktueller Rust-Stub: bekannte Probleme
 
 Der aktuelle `src/sources/dwds.rs` macht ungefähr:
 
@@ -177,7 +361,7 @@ Der aktuelle `src/sources/dwds.rs` macht ungefähr:
 
 Diese Implementierung soll ersetzt oder stark überarbeitet werden.
 
-### DWDS-Seitenstruktur
+#### DWDS-Seitenstruktur
 
 Wichtige DWDS-Strukturen aus den Fixtures:
 
@@ -200,7 +384,7 @@ Wichtige DWDS-Strukturen aus den Fixtures:
 
 Homographen können als mehrere Artikelbereiche beziehungsweise Tab-Panes auf derselben Seite vorkommen. `Bank` ist der zentrale Testfall.
 
-### Homographen
+#### Homographen
 
 Portiere die Logik aus:
 
@@ -231,7 +415,7 @@ Beide teilen sich dieselbe kanonische URL:
 https://www.dwds.de/wb/Bank
 ```
 
-### Mapping auf Rust-Modelle
+#### Mapping auf Rust-Modelle
 
 Mapping:
 
@@ -252,7 +436,7 @@ Mapping:
 
 DWDS-Synonyme bleiben leer.
 
-### Grammatik und Wortart
+#### Grammatik und Wortart
 
 Portiere:
 
@@ -265,9 +449,9 @@ Regeln:
 * Blocktext wird bereinigt als `grammar` gespeichert.
 * `part_of_speech` wird aus dem Anfang von `grammar` extrahiert:
 
-  * vor dem ersten `·` abschneiden
-  * Klammerzusätze entfernen
-  * trimmen
+ * vor dem ersten `·` abschneiden
+ * Klammerzusätze entfernen
+ * trimmen
 
 Beispiele:
 
@@ -279,7 +463,7 @@ Substantiv (Neutrum) · Genitiv Singular: Hauses · Nominativ Plural: Häuser
 -> part_of_speech = Substantiv
 ```
 
-### Bedeutungen / Lesarten
+#### Bedeutungen / Lesarten
 
 Portiere die rekursive Logik aus:
 
@@ -290,12 +474,12 @@ DWDS-Lesarten sind rekursiv:
 
 ```text
 div.dwdswb-lesarten
-  div.dwdswb-lesart
-    span.dwdswb-lesart-n
-    div.dwdswb-lesart-content
-      div.dwdswb-lesart-def
-      div.dwdswb-verwendungsbeispiele
-      div.dwdswb-lesart
+ div.dwdswb-lesart
+   span.dwdswb-lesart-n
+   div.dwdswb-lesart-content
+     div.dwdswb-lesart-def
+     div.dwdswb-verwendungsbeispiele
+     div.dwdswb-lesart
 ```
 
 Regeln:
@@ -314,13 +498,13 @@ Für `Bank` muss unter anderem diese Struktur möglich sein:
 ```text
 entry 1
 sense 1 label=1. source_id=d-1-1 definition=Sitz für mehrere Personen nebeneinander, meist aus Holz
-  sense 1 label=● source_id=d-1-1-1 definition=ohne Ausnahme
+ sense 1 label=● source_id=d-1-1-1 definition=ohne Ausnahme
 sense 2 label=2. source_id=d-1-2 definition=Handwerkstisch
 sense 3 label=3. source_id=d-1-3 definition=Zusammenballung, Anhäufung
-  sense 1 label=a) source_id=d-1-3-1 definition=von Sand, Fels, Schlamm, Tieren in Gewässern
+ sense 1 label=a) source_id=d-1-3-1 definition=von Sand, Fels, Schlamm, Tieren in Gewässern
 ```
 
-### Definitionstext
+#### Definitionstext
 
 Portiere die Logik aus:
 
@@ -352,7 +536,7 @@ Beispiel aus `Bank`:
 Synonym zu Bankhalter = Person, die das Spiel leitet, die Einsätze verwaltet und gegen die die übrigen Spieler spielen
 ```
 
-### Mehrwortausdrücke / MWA
+#### Mehrwortausdrücke / MWA
 
 Portiere besonders sorgfältig:
 
@@ -380,7 +564,7 @@ eine Bank sein (MWA) = etw. sein, das die an es gestellten (hohen) Erwartungen v
 
 Diese MWA-Definition gehört in `Sense.definition`, nicht in `DictionaryEntry.idioms`.
 
-### Qualifier
+#### Qualifier
 
 Portiere:
 
@@ -396,14 +580,14 @@ Regeln:
 * Leere Texte ignorieren.
 * Beispiele:
 
-  * `metonymisch`
-  * `Glücksspiel`
-  * `umgangssprachlich`
-  * `übertragen`
+ * `metonymisch`
+ * `Glücksspiel`
+ * `umgangssprachlich`
+ * `übertragen`
 
 Diese werden in `Sense.qualifiers` gespeichert.
 
-### Beispiele
+#### Beispiele
 
 Portiere:
 
@@ -418,7 +602,7 @@ Regeln:
 * Keine globale Beispiel-Sammlung.
 * Keine pauschale Zuordnung aller Beispiele zur ersten Bedeutung.
 
-### Idiome / Mehrwortausdrücke als Relation-Block
+#### Idiome / Mehrwortausdrücke als Relation-Block
 
 Portiere:
 
@@ -458,7 +642,7 @@ sichere Bank
 todsichere Bank
 ```
 
-### Etymologie
+#### Etymologie
 
 Portiere:
 
@@ -476,7 +660,7 @@ Für `Bank` müssen zwei verschiedene Herkunftstexte entstehen:
 * `1 Bank f. ‘Sitzmöbel für mehrere’ ...`
 * `2 Bank f. ‘Geschäft für Geldverkehr’ ...`
 
-### Textbereinigung
+#### Textbereinigung
 
 Portiere `woerterbuch-dwds--clean-text`.
 
@@ -491,12 +675,12 @@ Mindestregeln:
 * Text trimmen.
 * Fachlich relevante Typografie erhalten:
 
-  * `⟨...⟩`
-  * `²Bank`
-  * `100-Dollar-Chips`
-  * Gedankenstriche
-  * Anführungszeichen
-  * Klammerzusätze wie `(MWA)`
+ * `⟨...⟩`
+ * `²Bank`
+ * `100-Dollar-Chips`
+ * Gedankenstriche
+ * Anführungszeichen
+ * Klammerzusätze wie `(MWA)`
 
 Nicht übernehmen:
 
@@ -507,7 +691,7 @@ Nicht übernehmen:
 * Layouttexte
 * versteckte Tooltip-Artefakte, außer gezielt ausgewertete `data-content`-Definitionen
 
-### Fixtures
+#### Fixtures
 
 Nutze die vorhandenen alten DWDS-Fixtures als Ausgangspunkt. Sie liegen bereits unter:
 
@@ -547,7 +731,7 @@ tests/fixtures/dwds/Nixdaexistiert.html
 
 Tests müssen offline laufen. Keine Live-Requests in Tests.
 
-### Snapshot-Tests
+#### Snapshot-Tests
 
 Ergänze DWDS-Snapshots analog zu den bestehenden Quellen:
 
@@ -576,22 +760,22 @@ idioms=[durch die Bank | etw. auf die lange Bank schieben]
 etymology=1 Bank f. ‘Sitzmöbel für mehrere’ ...
 sense 1 source_id=d-1-1 label=1. definition=Sitz für mehrere Personen nebeneinander, meist aus Holz
 examples=[eine Bank im Park, vor dem Haus | Anlagen mit Bänken | ...]
-  sense 1 source_id=d-1-1-1 label=● definition=ohne Ausnahme
-  examples=[auf den Schwindel sind alle durch die Bank hereingefallen | ...]
+ sense 1 source_id=d-1-1-1 label=● definition=ohne Ausnahme
+ examples=[auf den Schwindel sind alle durch die Bank hereingefallen | ...]
 sense 2 source_id=d-1-2 label=2. definition=Handwerkstisch
 sense 3 source_id=d-1-3 label=3. definition=Zusammenballung, Anhäufung
-  sense 1 source_id=d-1-3-1 label=a) definition=von Sand, Fels, Schlamm, Tieren in Gewässern
+ sense 1 source_id=d-1-3-1 label=a) definition=von Sand, Fels, Schlamm, Tieren in Gewässern
 
 entry 2 homograph=2 headword=Bank title=Bank, die part_of_speech=Substantiv grammar=Substantiv (Femininum) · Genitiv Singular: Bank · Nominativ Plural: Banken url=https://www.dwds.de/wb/Bank
 idioms=[eine Bank sein | sichere Bank | todsichere Bank]
 etymology=2 Bank f. ‘Geschäft für Geldverkehr’ ...
 sense 1 source_id=d-2-1 label=1. definition=Unternehmen, das gewerbsmäßig Geldgeschäfte und Börsengeschäfte betreibt
-  sense 1 source_id=d-2-1-1 label=● definition=einzelne Filiale einer ²Bank
-  qualifiers=[metonymisch]
+ sense 1 source_id=d-2-1-1 label=● definition=einzelne Filiale einer ²Bank
+ qualifiers=[metonymisch]
 sense 3 source_id=d-2-3 label=3. definition=-
 qualifiers=[Glücksspiel]
-  sense 3 source_id=d-2-3-3 label=c) definition=eine Bank sein (MWA) = etw. sein, das die an es gestellten (hohen) Erwartungen verlässlich erfüllt; jmd. sein, der die von ihm erwartete (erfolgreiche) Leistung mit Sicherheit erbringt
-  qualifiers=[umgangssprachlich]
+ sense 3 source_id=d-2-3-3 label=c) definition=eine Bank sein (MWA) = etw. sein, das die an es gestellten (hohen) Erwartungen verlässlich erfüllt; jmd. sein, der die von ihm erwartete (erfolgreiche) Leistung mit Sicherheit erbringt
+ qualifiers=[umgangssprachlich]
 ```
 
 Für `Nixdaexistiert`:
@@ -605,7 +789,7 @@ error=No matches found
 
 Die genaue Formatierung darf an vorhandene Snapshot-Helfer angepasst werden, muss aber stabil bleiben.
 
-### Zusätzliche Unit-Tests
+#### Zusätzliche Unit-Tests
 
 Neben Snapshot-Tests bitte gezielte Unit-Tests für Parser-Hilfsfunktionen ergänzen.
 
@@ -613,81 +797,81 @@ Mindestens testen:
 
 * URL-Bildung:
 
-  * `Bank` -> `https://www.dwds.de/wb/Bank`
-  * Leerzeichen und Sonderzeichen werden URL-encodiert.
+ * `Bank` -> `https://www.dwds.de/wb/Bank`
+ * Leerzeichen und Sonderzeichen werden URL-encodiert.
 * Canonical-URL:
 
-  * `<link rel="canonical" href="...">` wird bevorzugt.
-  * Fallback ist die gebaute URL.
+ * `<link rel="canonical" href="...">` wird bevorzugt.
+ * Fallback ist die gebaute URL.
 * Entry-Erkennung:
 
-  * HTML mit `dwdswb-artikel` ist Entry-Page.
-  * HTML ohne `dwdswb-artikel` ergibt No-Match.
+ * HTML mit `dwdswb-artikel` ist Entry-Page.
+ * HTML ohne `dwdswb-artikel` ergibt No-Match.
 * Homographen:
 
-  * `Bank` ergibt zwei Entries.
-  * `data-hidx` wird in `DictionaryEntry.homograph` übernommen.
-  * Scope `id="0"` wird ignoriert.
+ * `Bank` ergibt zwei Entries.
+ * `data-hidx` wird in `DictionaryEntry.homograph` übernommen.
+ * Scope `id="0"` wird ignoriert.
 * Titel/Lemma:
 
-  * `h1.dwdswb-ft-lemmaansatz` -> Titel.
-  * `b` darin -> Lemma.
+ * `h1.dwdswb-ft-lemmaansatz` -> Titel.
+ * `b` darin -> Lemma.
 * Grammatik/Wortart:
 
-  * `Grammatik`-Block wird gefunden.
-  * Wortart wird aus Grammatik extrahiert.
+ * `Grammatik`-Block wird gefunden.
+ * Wortart wird aus Grammatik extrahiert.
 * Rekursive Lesarten:
 
-  * Parent-Sense mit Child-Senses.
-  * Direkte Kinder statt globale Descendants.
-  * DWDS-IDs wie `d-1-3-1` bleiben in `Sense.source_id`.
+ * Parent-Sense mit Child-Senses.
+ * Direkte Kinder statt globale Descendants.
+ * DWDS-IDs wie `d-1-3-1` bleiben in `Sense.source_id`.
 * Definitionstext:
 
-  * `dwdswb-definition`
-  * `dwdswb-definitionen`
-  * `dwdswb-syntagmatik`
-  * `dwdswb-verweise`
-  * `data-content` mit HTML wird in Text umgewandelt.
+ * `dwdswb-definition`
+ * `dwdswb-definitionen`
+ * `dwdswb-syntagmatik`
+ * `dwdswb-verweise`
+ * `data-content` mit HTML wird in Text umgewandelt.
 * Skip-Klassen:
 
-  * `dwdswb-binnenquelle`
-  * `dwdswb-paraphrase` bei normaler Definition
+ * `dwdswb-binnenquelle`
+ * `dwdswb-paraphrase` bei normaler Definition
 * Qualifier:
 
-  * `metonymisch`
-  * `Glücksspiel`
-  * `umgangssprachlich`
-  * `übertragen`
+ * `metonymisch`
+ * `Glücksspiel`
+ * `umgangssprachlich`
+ * `übertragen`
 * MWA:
 
-  * Marker über `letter-mwa.svg`.
-  * Marker über Tooltip `Mehrwortausdruck`.
-  * Format `Phrase (MWA) = Paraphrase`.
+ * Marker über `letter-mwa.svg`.
+ * Marker über Tooltip `Mehrwortausdruck`.
+ * Format `Phrase (MWA) = Paraphrase`.
 * Beispiele:
 
-  * Beispiele bleiben bei der passenden Lesart.
-  * Keine globale Sammlung auf erster Bedeutung.
-  * Nur `dwdswb-belegtext`.
+ * Beispiele bleiben bei der passenden Lesart.
+ * Keine globale Sammlung auf erster Bedeutung.
+ * Nur `dwdswb-belegtext`.
 * Idiome:
 
-  * Relation-Block `relation-block-<n>-mwa`.
-  * Nur `/wb/`-Links.
-  * Deduplizierung mit stabiler Reihenfolge.
+ * Relation-Block `relation-block-<n>-mwa`.
+ * Nur `/wb/`-Links.
+ * Deduplizierung mit stabiler Reihenfolge.
 * Etymologie:
 
-  * `etymwb-entry` je Homograph.
-  * Herkunftstexte werden nicht zwischen Homographen vermischt.
+ * `etymwb-entry` je Homograph.
+ * Herkunftstexte werden nicht zwischen Homographen vermischt.
 * Textbereinigung:
 
-  * Non-Breaking-Spaces.
-  * Spaces vor Satzzeichen.
-  * Spaces in Klammern.
-  * Spaces in `⟨...⟩`.
+ * Non-Breaking-Spaces.
+ * Spaces vor Satzzeichen.
+ * Spaces in Klammern.
+ * Spaces in `⟨...⟩`.
 * Fehlerfall:
 
-  * `Nixdaexistiert` -> `ok=false`, `error=No matches found`.
+ * `Nixdaexistiert` -> `ok=false`, `error=No matches found`.
 
-### Hinweise zu den alten Expected-Dateien
+#### Hinweise zu den alten Expected-Dateien
 
 Die alten `.el`-Expected-Dateien sind keine 1:1-Rust-Snapshot-Vorlage, aber sie sind die fachliche Oracle-Referenz.
 
@@ -709,7 +893,7 @@ Besonders hilfreiche Dateien:
 
 Die Rust-Snapshots sollen die gleichen fachlichen Daten enthalten, aber im vorhandenen Rust-Snapshot-Stil.
 
-### Workflow für Codex
+#### Workflow für Codex
 
 Beim Umsetzen:
 
@@ -722,7 +906,7 @@ Beim Umsetzen:
 7. Task-Datei mit Result, Changes, Checks und Open Points aktualisieren.
 8. TODO-Status am Ende auf `REVIEW` setzen.
 
-### Akzeptanzkriterien
+#### Akzeptanzkriterien
 
 * DWDS-Live-Lookups verwenden `https://www.dwds.de/wb/<lemma>`.
 * Die kanonische DWDS-URL wird aus dem HTML gelesen, falls vorhanden.
@@ -753,7 +937,7 @@ Beim Umsetzen:
 * Wenn möglich, läuft auch `cargo test` erfolgreich.
 * Ein kurzer manueller Check mit `cargo run -- Bank --sources dwds --json` liefert zwei DWDS-Entries.
 
-### Out of scope
+#### Out of scope
 
 * Kein Lemmatizer.
 * Kein Caching.
@@ -765,8 +949,6 @@ Beim Umsetzen:
 * Keine vollständige 1:1-Kompatibilität mit dem alten Emacs-Lisp-Plist-Output.
 * Keine Live-Requests in Tests.
 * Keine Umstellung auf `insta` oder ein neues Snapshot-Framework.
-
-# Abgeschlossen
 
 ## DONE Duden: HTML-Parser + Snapshot-Tests
 
@@ -1298,7 +1480,7 @@ Beim Umsetzen:
 - Keine Umstellung auf `insta` oder ein neues Snapshot-Framework.
 - Keine Umstellung der Duden-Ergebnis-URLs von `?amp` auf Nicht-AMP in dieser Aufgabe.
 
-## DONE Wiktionary: REST-HTML-Parser + Snapshot-Tests [archive/2026-06-09--wiktionary-parser.md](archive/2026-06-09--wiktionary-parser.md) 
+## DONE Wiktionary: REST-HTML-Parser + Snapshot-Tests [archive/2026-06-09--wiktionary-parser.md](archive/2026-06-09--wiktionary-parser.md)
 
 Implementiere den Wiktionary-Parser in Rust fertig und ergänze Snapshot-Tests analog zur bestehenden OpenThesaurus-Implementierung.
 
@@ -1554,7 +1736,7 @@ Nun führen wir die Konfigurationen und die parallele Ausführung in der Hauptfu
     2. Die aktivierten Quellen (Duden via AMP, Wiktionary via REST-HTML, etc.) vollkommen parallel mit `tokio::join!` abgefragt und geparst werden.
     3. Die Ergebnisse gemäss der gewünschten Sektionen gefiltert, zusammengeführt und entweder schön formatiert im Terminal oder als JSON auf stdout ausgegeben werden.
 
-## DONE Openthesaurus [archive/2026-06-09--openthesaurus-parser.md](archive/2026-06-09--openthesaurus-parser.md) 
+### DONE Openthesaurus [archive/2026-06-09--openthesaurus-parser.md](archive/2026-06-09--openthesaurus-parser.md)
 
 In dem Ordner sind die Emasc Lisp Dateien für das Scrapen/Parsen [emacs-lisp](../../emacs-lisp). Für OpenThesaurus ist relevant:
 
