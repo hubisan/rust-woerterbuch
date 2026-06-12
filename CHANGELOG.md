@@ -4,6 +4,8 @@ This file records completed changes.
 
 ## Unreleased
 
+- `CHANGED` Improved Duden lookup latency by returning direct Duden entries immediately instead of waiting for the search page; search is now used only as fallback for missing or unparseable direct entries, this is usually the case, when there are multiple homographs like for the word Bank.
+- `FIX` Cargo.toml had unexepected string `-`, oups.
 - `ADDED` Github CI for automated testing.
 - `CHANGED` Renamed binary to `woerterbuch`.
 - `CHANGED`: Clarified human-readable source status messages so skipped sections, missing entries, and real errors are shown differently.

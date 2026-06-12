@@ -12,47 +12,64 @@ pub async fn lookup(client: &Client, query: &str) -> Result<SourceResult> {
     let entry_url = build_url(query);
     let search_url = build_search_url(query);
 
-    let (entry_response, search_response) = futures::join!(
-        fetch_response(client, &entry_url),
-        fetch_response(client, &search_url),
-    );
+    let search_client = client.clone();
+    let search_handle =
+        tokio::spawn(async move { fetch_response(&search_client, &search_url).await });
 
-    let search_urls = match search_response {
-        Ok((StatusCode::NOT_FOUND, _)) => Vec::new(),
-        Ok((status, body)) if status.is_success() => {
-            parse_search_results(&Html::parse_document(&body), query)
-        }
-        Ok((_status, _body)) => Vec::new(),
-        Err(_err) => Vec::new(),
-    };
-
-    if search_urls.len() > 1 {
-        return lookup_entries_from_urls(client, query, search_urls).await;
-    }
-
-    match entry_response {
+    match fetch_response(client, &entry_url).await {
         Ok((StatusCode::NOT_FOUND, _)) => {
+            let search_response = await_search_response(search_handle).await?;
+            process_search_response(client, query, search_response).await
+        }
+        Ok((status, _body)) if !status.is_success() => {
+            let search_response = await_search_response(search_handle).await?;
+            process_search_response(client, query, search_response).await
+        }
+        Ok((_status, body)) => match parse_entry(query, &entry_url, &body, 1) {
+            Some(entry) => {
+                search_handle.abort();
+                Ok(SourceResult::ok(
+                    Source::Duden,
+                    Some(UrlValue::One(entry_url)),
+                    vec![entry],
+                ))
+            }
+            None => {
+                let search_response = await_search_response(search_handle).await?;
+                process_search_response(client, query, search_response).await
+            }
+        },
+        Err(entry_err) => match await_search_response(search_handle).await {
+            Ok(search_response) => match process_search_response(client, query, search_response).await
+            {
+                Ok(result) if result.ok => Ok(result),
+                Ok(_no_match) => Err(entry_err),
+                Err(_search_err) => Err(entry_err),
+            },
+            Err(_join_or_search_err) => Err(entry_err),
+        },
+    }
+}
+
+async fn await_search_response(
+    search_handle: tokio::task::JoinHandle<Result<(StatusCode, String)>>,
+) -> Result<(StatusCode, String)> {
+    search_handle.await?
+}
+
+async fn process_search_response(
+    client: &Client,
+    query: &str,
+    search_response: (StatusCode, String),
+) -> Result<SourceResult> {
+    match search_response {
+        (StatusCode::NOT_FOUND, _) => Ok(no_match_result()),
+        (status, body) if !status.is_success() => Err(http_error(status, &body)),
+        (_status, body) => {
+            let search_urls = parse_search_results(&Html::parse_document(&body), query);
+
             if search_urls.is_empty() {
                 Ok(no_match_result())
-            } else {
-                lookup_entries_from_urls(client, query, search_urls).await
-            }
-        }
-        Ok((status, body)) if !status.is_success() => Err(http_error(status, &body)),
-        Ok((_status, body)) => match parse_entry(query, &entry_url, &body, 1) {
-            Some(entry) => Ok(SourceResult::ok(
-                Source::Duden,
-                Some(UrlValue::One(entry_url)),
-                vec![entry],
-            )),
-            None if !search_urls.is_empty() => {
-                lookup_entries_from_urls(client, query, search_urls).await
-            }
-            None => Ok(no_match_result()),
-        },
-        Err(err) => {
-            if search_urls.is_empty() {
-                Err(err)
             } else {
                 lookup_entries_from_urls(client, query, search_urls).await
             }

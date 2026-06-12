@@ -21,4 +21,4 @@ pretty_assertions = "1"
 
 [[bin]]
 name = "woerterbuch"
-path = "src/main.rs"-
+path = "src/main.rs"
