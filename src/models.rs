@@ -290,6 +290,16 @@ impl SynonymGroup {
     }
 }
 
+pub fn dedupe(values: impl IntoIterator<Item = String>) -> Vec<String> {
+    let mut out = Vec::new();
+    for value in values {
+        if !value.is_empty() && !out.contains(&value) {
+            out.push(value);
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -468,14 +478,4 @@ mod tests {
         assert!(entry.synonym_groups.is_empty());
         assert!(entry.senses.is_empty());
     }
-}
-
-pub fn dedupe(values: impl IntoIterator<Item = String>) -> Vec<String> {
-    let mut out = Vec::new();
-    for value in values {
-        if !value.is_empty() && !out.contains(&value) {
-            out.push(value);
-        }
-    }
-    out
 }

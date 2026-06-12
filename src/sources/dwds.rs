@@ -196,7 +196,7 @@ fn collect_qualifiers(node: &ElementRef<'_>) -> Vec<String> {
 fn qualifier_node(node: &ElementRef<'_>) -> bool {
     let classes = class_list(node);
     !classes.is_empty()
-        && !classes.iter().any(|class| *class == "dwdswb-diasystematik")
+        && !classes.contains(&"dwdswb-diasystematik")
         && classes.iter().any(|class| class.starts_with("dwdswb-"))
 }
 

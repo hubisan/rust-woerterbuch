@@ -35,6 +35,8 @@ The compiled binary is then available at:
 For local installation into Cargo's binary directory:
 
 ```bash
+git clone https://github.com/hubisan/rust-woerterbuch
+cd rust-woerterbuch
 cargo install --path .
 ```
 

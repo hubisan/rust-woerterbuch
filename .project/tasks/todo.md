@@ -16,29 +16,16 @@ Important files:
 
 Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiedenen Quellen — Duden, DWDS, Wiktionary und OpenThesaurus — via Scraping aggregiert, wird in ein performantes, asynchrones Rust-CLI-Tool umgewandelt.
 
-# Projekt finalisieren
+# TODO Additional output formats
 
-## Near term
-
-- Fix remaining Clippy warnings:
-  - Replace DWDS manual `iter().any(...)` check with `contains(...)`.
-  - Move `dedupe(...)` before the test module in `models.rs`.
-
-- Confirm installed binary name:
-  - `cargo install --path .`
-  - `woerterbuch --help`
-  - `woerterbuch Bank --json`
-
-## Later improvements
-
-- Consider additional output formats:
   - `--format human`
   - `--format json`
   - `--format markdown`
   - `--format org`
+
 - Make two variants of the ouput: Sources > Sections and Sections > Sources
 
-## Release checkpoint
+# Release checkpoint
 
 - Fresh clone test:
   - clone repo into an empty directory
@@ -53,7 +40,12 @@ Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiede
 
 # Abgeschlossen
 
-### DONE [Konsistente Statusdarstellung im Human-Output](./2026-06-11--human-output-statuses.md)
+## DONE [Fix remaining Clippy warnings](./archive/2026-06-12--fix-remaining-clippy-warnings.md)
+
+  - Replace DWDS manual `iter().any(...)` check with `contains(...)`.
+  - Move `dedupe(...)` before the test module in `models.rs`.
+
+## DONE [Konsistente Statusdarstellung im Human-Output](./archive/2026-06-11--human-output-statuses.md)
 
 Ja, das ist aktuell tatsächlich missverständlich.
 Im Human-Output gibt es heute nur diese grobe Unterscheidung in src/format.rs (line 16):
@@ -73,9 +65,9 @@ No entry found on source.
 Error: HTTP 404 ... oder allgemeiner Error: ...
 Der aktuelle Text ist also eher ein UI-Problem als ein Datenmodell-Problem. Wenn du willst, mache ich als nächsten kleinen Follow-up genau diese Statusdarstellung im Human-Output konsistent.
 
-### DONE [Clarify and fix section filtering semantics](./2026-06-11--section-filtering-semantics.md)
+## DONE [Clarify and fix section filtering semantics](./archive/2026-06-11--section-filtering-semantics.md)
 
-#### Context
+### Context
 
 The Rust CLI currently accepts `--sections definitions,examples,synonyms,origin,idioms`.
 
@@ -85,7 +77,7 @@ This means `--sections` is currently an output filter, not true section-level sc
 
 The old Emacs Lisp implementation passed `sections` into source-specific fetch/parse functions, but the current Rust architecture deliberately centralized filtering in `src/models.rs`.
 
-#### Goal
+### Goal
 
 Define and implement stable section semantics:
 
@@ -95,7 +87,7 @@ Define and implement stable section semantics:
 * Prevent requested sections from disappearing accidentally when another related section is disabled.
 * Add cheap source-level request skipping where it is clearly correct.
 
-#### Decision
+### Decision
 
 Do not remove `--sections`.
 
@@ -115,9 +107,9 @@ Example:
 * `OpenThesaurus` only provides synonyms.
 * If `synonyms` is not requested, skip the OpenThesaurus request entirely.
 
-#### Required Changes
+### Required Changes
 
-##### 1. Fix `retain_sections` so requested nested data is preserved
+#### 1. Fix `retain_sections` so requested nested data is preserved
 
 Current behavior clears all `senses` when `definitions` is not requested:
 
@@ -156,7 +148,7 @@ Expected behavior:
   * keep entry-level synonym groups and sense-level synonyms
 * After pruning, remove empty senses/subsenses only if they contain no requested content and no useful child content.
 
-##### 2. Add source capability checks
+#### 2. Add source capability checks
 
 Add a helper in `src/sources.rs` or on `Source`:
 
@@ -189,7 +181,7 @@ if !source_supports_any_section(source, sections) {
 }
 ```
 
-##### 3. Keep source parsers simple
+#### 3. Keep source parsers simple
 
 Do not pass `sections` into all parser functions unless there is a proven performance issue.
 
@@ -208,7 +200,7 @@ Exception:
 
 * OpenThesaurus can be skipped before lookup when `synonyms` is not requested.
 
-##### 4. Add tests for section combinations
+#### 4. Add tests for section combinations
 
 Add tests for `retain_sections` using synthetic `DictionaryEntry` / `Sense` data.
 
@@ -224,7 +216,7 @@ Required cases:
 
 Add at least one integration/snapshot-style test for CLI JSON behavior if the existing test structure makes that practical.
 
-#### Acceptance Criteria
+### Acceptance Criteria
 
 * `cargo test` passes.
 * `cargo run -- Bank --json --sections examples` returns examples when the source contains examples.
@@ -235,14 +227,14 @@ Add at least one integration/snapshot-style test for CLI JSON behavior if the ex
 * Source parsers remain independently testable with local fixtures.
 * No live requests are introduced into tests.
 
-#### Out of scope
+### Out of scope
 
 * Rewriting Duden/DWDS/Wiktionary parsers to parse only individual sections.
 * Changing the JSON model shape.
 * Removing the `--sections` CLI option.
 * Benchmarking parser-level micro-optimizations unless later evidence shows this is needed.
 
-#### Open Points
+### Open Points
 
 * Should skipped sources appear as empty successful results, or be omitted from `results`?
   * Recommendation: keep them as empty successful results for stable source order.
@@ -1763,7 +1755,7 @@ Nun führen wir die Konfigurationen und die parallele Ausführung in der Hauptfu
     2. Die aktivierten Quellen (Duden via AMP, Wiktionary via REST-HTML, etc.) vollkommen parallel mit `tokio::join!` abgefragt und geparst werden.
     3. Die Ergebnisse gemäss der gewünschten Sektionen gefiltert, zusammengeführt und entweder schön formatiert im Terminal oder als JSON auf stdout ausgegeben werden.
 
-### DONE Openthesaurus [archive/2026-06-09--openthesaurus-parser.md](archive/2026-06-09--openthesaurus-parser.md)
+## DONE Openthesaurus [archive/2026-06-09--openthesaurus-parser.md](archive/2026-06-09--openthesaurus-parser.md)
 
 In dem Ordner sind die Emasc Lisp Dateien für das Scrapen/Parsen [emacs-lisp](../../emacs-lisp). Für OpenThesaurus ist relevant:
 
