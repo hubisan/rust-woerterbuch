@@ -1,7 +1,7 @@
 # woerterbuch
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Tests](https://github.com/hubisan/rust-woerterbuch/actions/workflows/ci.yml/badge.svg)](https://github.com/hubisan/woerterbuch/actions/workflows/tests.yml)
+[![Tests](https://github.com/hubisan/rust-woerterbuch/actions/workflows/ci.yml/badge.svg)](https://github.com/hubisan/woerterbuch/actions/workflows/ci.yml)
 
 `woerterbuch` is a small async Rust CLI for German dictionary lookups. It queries multiple German-language sources and returns either human-readable terminal output or structured JSON for Emacs, scripts, and other tools.
 
@@ -97,8 +97,7 @@ Common sections:
 * `synonyms`
 * `examples`
 * `origin`
-* `grammar`
-* `pronunciation`
+* `idioms`
 
 Examples:
 
