@@ -133,7 +133,16 @@ woerterbuch Bank --format markdown --layout by-source
 woerterbuch Bank --format markdown --layout by-section
 ```
 
-`--layout by-source` groups by source first, then by entry and content section. `--layout by-section` groups by content section first, then by source. In text-like output, idioms are rendered as their own final section; sense-level idioms keep a reference such as `1a`. JSON should still be treated as the stable integration interface. Human-readable, Markdown, and Org output are intended for reading and may change more freely.
+`--layout by-source` groups by source first, then by entry and content section. `--layout by-section` groups by content section first, then by source. `--layout` is only supported for `human`, `markdown`, and `org` output; JSON always uses the source-native structure. In text-like output, idioms are rendered as their own final section; sense-level idioms keep a reference such as `1a`. Human-readable, Markdown, and Org output are intended for reading and may change more freely.
+
+Use `--max-examples` to limit how many examples are rendered per definition in text-like output:
+
+```bash
+woerterbuch Bank --format markdown --max-examples 2
+woerterbuch Bank --format org --layout by-section --max-examples 1
+```
+
+JSON ignores `--max-examples` and always returns the full source-native data.
 
 ### Examples
 
@@ -175,6 +184,7 @@ Run directly from the repository without installing:
 cargo run -- Bank
 cargo run -- Bank --json
 cargo run -- Bank --format markdown --layout by-section
+cargo run -- Bank --format markdown --max-examples 2
 cargo run -- Bank --sources dwds,duden
 ```
 

@@ -3,7 +3,7 @@ mod http;
 mod models;
 mod sources;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::Parser;
 use format::{OutputFormat, OutputLayout};
 use futures::future::join_all;
@@ -27,8 +27,12 @@ struct Cli {
     format: OutputFormat,
 
     /// Output layout: by-source or by-section.
-    #[arg(long, value_enum, default_value = "by-source")]
-    layout: OutputLayout,
+    #[arg(long, value_enum)]
+    layout: Option<OutputLayout>,
+
+    /// Limit rendered examples per definition in text-like output formats.
+    #[arg(long)]
+    max_examples: Option<usize>,
 
     /// Comma-separated sources: openthesaurus,dwds,duden,wiktionary.
     #[arg(long, value_delimiter = ',', value_enum)]
@@ -66,8 +70,85 @@ async fn main() -> Result<()> {
     } else {
         cli.format
     };
+    let layout = resolve_layout(output_format, cli.layout)?;
 
-    print!("{}", format::render(&response, output_format, cli.layout)?);
+    print!(
+        "{}",
+        format::render(&response, output_format, layout, cli.max_examples)?
+    );
 
     Ok(())
+}
+
+fn resolve_layout(
+    output_format: OutputFormat,
+    requested_layout: Option<OutputLayout>,
+) -> Result<OutputLayout> {
+    match output_format {
+        OutputFormat::Json => {
+            if requested_layout.is_some() {
+                bail!("`--layout` is only supported for human, markdown, and org output.");
+            }
+            Ok(OutputLayout::BySource)
+        }
+        OutputFormat::Human | OutputFormat::Markdown | OutputFormat::Org => {
+            Ok(requested_layout.unwrap_or(OutputLayout::BySource))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn markdown_defaults_to_by_source_layout() {
+        let cli = Cli::parse_from(["woerterbuch", "Bank", "--format", "markdown"]);
+
+        let output_format = if cli.json {
+            OutputFormat::Json
+        } else {
+            cli.format
+        };
+
+        assert_eq!(
+            resolve_layout(output_format, cli.layout).expect("layout"),
+            OutputLayout::BySource
+        );
+    }
+
+    #[test]
+    fn markdown_accepts_by_section_layout() {
+        let cli = Cli::parse_from([
+            "woerterbuch",
+            "Bank",
+            "--format",
+            "markdown",
+            "--layout",
+            "by-section",
+        ]);
+
+        let output_format = if cli.json {
+            OutputFormat::Json
+        } else {
+            cli.format
+        };
+
+        assert_eq!(
+            resolve_layout(output_format, cli.layout).expect("layout"),
+            OutputLayout::BySection
+        );
+    }
+
+    #[test]
+    fn json_rejects_explicit_layout() {
+        let error = resolve_layout(OutputFormat::Json, Some(OutputLayout::BySource))
+            .expect_err("json layout should fail");
+
+        assert_eq!(
+            error.to_string(),
+            "`--layout` is only supported for human, markdown, and org output."
+        );
+    }
 }

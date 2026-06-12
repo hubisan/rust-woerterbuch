@@ -49,7 +49,9 @@ Make the output use newlines as shown in the examples:
 - by-section
   Example for markdown [example-output-markdown--by-section.md](example-output-markdown--by-section.md)
 
-# TODO JSON should not accept layout
+# DONE [Org-mode use ~nr~ instead of `nr`](./2026-06-12--json-layout-org-labels-and-max-examples.md)
+
+# DONE [JSON should not accept layout](./2026-06-12--json-layout-org-labels-and-max-examples.md)
 
 Clarify layout behavior for JSON output.
 
@@ -95,7 +97,7 @@ Clarify layout behavior for JSON output.
 * `cargo test` passes.
 * `cargo clippy --all-targets --all-features -- -D warnings` passes.
 
-# TODO Limit rendered examples per definition
+# DONE [Limit rendered examples per definition](./2026-06-12--json-layout-org-labels-and-max-examples.md)
 
 Add a CLI option to limit the number of rendered examples per definition.
 

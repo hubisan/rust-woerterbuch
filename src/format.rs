@@ -1,6 +1,5 @@
 use crate::models::{DictionaryEntry, LookupResponse, Sense, Source, SourceResult, SynonymGroup};
 use clap::ValueEnum;
-use serde_json::{json, Value};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum OutputFormat {
@@ -38,15 +37,6 @@ impl ContentSection {
         Self::Idioms,
     ];
 
-    fn key(self) -> &'static str {
-        match self {
-            Self::Etymology => "etymology",
-            Self::Synonyms => "synonyms",
-            Self::Definitions => "definitions",
-            Self::Idioms => "idioms",
-        }
-    }
-
     fn title(self) -> &'static str {
         match self {
             Self::Etymology => "Etymology",
@@ -80,178 +70,38 @@ pub fn render(
     response: &LookupResponse,
     output_format: OutputFormat,
     layout: OutputLayout,
+    max_examples: Option<usize>,
 ) -> serde_json::Result<String> {
     match output_format {
-        OutputFormat::Json => render_json(response, layout),
-        OutputFormat::Human => Ok(render_text(response, TextSyntax::Human, layout)),
-        OutputFormat::Markdown => Ok(render_text(response, TextSyntax::Markdown, layout)),
-        OutputFormat::Org => Ok(render_text(response, TextSyntax::Org, layout)),
+        OutputFormat::Json => render_json(response),
+        OutputFormat::Human => Ok(render_text(
+            response,
+            TextSyntax::Human,
+            layout,
+            max_examples,
+        )),
+        OutputFormat::Markdown => Ok(render_text(
+            response,
+            TextSyntax::Markdown,
+            layout,
+            max_examples,
+        )),
+        OutputFormat::Org => Ok(render_text(response, TextSyntax::Org, layout, max_examples)),
     }
 }
 
-fn render_json(response: &LookupResponse, layout: OutputLayout) -> serde_json::Result<String> {
-    let value = match layout {
-        OutputLayout::BySource => serde_json::to_value(response)?,
-        OutputLayout::BySection => sections_sources_json(response),
-    };
-
-    let mut output = serde_json::to_string_pretty(&value)?;
+fn render_json(response: &LookupResponse) -> serde_json::Result<String> {
+    let mut output = serde_json::to_string_pretty(response)?;
     output.push('\n');
     Ok(output)
 }
 
-fn sections_sources_json(response: &LookupResponse) -> Value {
-    let sections: Vec<Value> = ContentSection::ALL
-        .iter()
-        .filter_map(|section| {
-            let sources: Vec<Value> = response
-                .results
-                .iter()
-                .filter_map(|source| section_source_json(source, *section))
-                .collect();
-
-            (!sources.is_empty()).then(|| {
-                json!({
-                    "section": section.key(),
-                    "sources": sources,
-                })
-            })
-        })
-        .collect();
-
-    json!({
-        "query": &response.query,
-        "layout": "by-section",
-        "sections": sections,
-    })
-}
-
-fn section_source_json(source: &SourceResult, section: ContentSection) -> Option<Value> {
-    if source_status_message(source).is_some() {
-        return None;
-    }
-
-    let entries: Vec<Value> = source
-        .entries
-        .iter()
-        .filter_map(|entry| section_entry_json(entry, section))
-        .collect();
-
-    (!entries.is_empty()).then(|| {
-        json!({
-            "source": source.source,
-            "entries": entries,
-        })
-    })
-}
-
-fn section_entry_json(entry: &DictionaryEntry, section: ContentSection) -> Option<Value> {
-    match section {
-        ContentSection::Etymology => entry
-            .etymology
-            .as_deref()
-            .filter(|text| !text.is_empty())
-            .map(|text| {
-                json!({
-                    "id": entry.id,
-                    "headword": &entry.headword,
-                    "text": text,
-                })
-            }),
-        ContentSection::Synonyms => {
-            let sense_synonyms = collect_sense_synonyms(entry);
-            (!entry.synonym_groups.is_empty() || !sense_synonyms.is_empty()).then(|| {
-                json!({
-                    "id": entry.id,
-                    "headword": &entry.headword,
-                    "synonym_groups": &entry.synonym_groups,
-                    "sense_synonyms": sense_synonyms,
-                })
-            })
-        }
-        ContentSection::Definitions => {
-            let senses: Vec<Value> = entry
-                .senses
-                .iter()
-                .filter_map(sense_definition_json)
-                .collect();
-
-            (!senses.is_empty()).then(|| {
-                json!({
-                    "id": entry.id,
-                    "headword": &entry.headword,
-                    "senses": senses,
-                })
-            })
-        }
-        ContentSection::Idioms => {
-            let idioms = collect_idioms(entry);
-            (!idioms.is_empty()).then(|| {
-                let idioms: Vec<Value> = idioms
-                    .iter()
-                    .map(|item| {
-                        json!({
-                            "reference": &item.reference,
-                            "text": &item.text,
-                        })
-                    })
-                    .collect();
-
-                json!({
-                    "id": entry.id,
-                    "headword": &entry.headword,
-                    "idioms": idioms,
-                })
-            })
-        }
-    }
-}
-
-fn sense_definition_json(sense: &Sense) -> Option<Value> {
-    if !sense_has_definition_section_content(sense) {
-        return None;
-    }
-
-    let subsenses: Vec<Value> = sense
-        .subsenses
-        .iter()
-        .filter_map(sense_definition_json)
-        .collect();
-
-    Some(json!({
-        "id": sense.id,
-        "source_id": &sense.source_id,
-        "label": &sense.label,
-        "definition": &sense.definition,
-        "qualifiers": &sense.qualifiers,
-        "examples": &sense.examples,
-        "image_url": &sense.image_url,
-        "subsenses": subsenses,
-    }))
-}
-
-fn collect_sense_synonyms(entry: &DictionaryEntry) -> Vec<Value> {
-    let mut out = Vec::new();
-    for sense in &entry.senses {
-        collect_sense_synonyms_recursive(sense, &mut out);
-    }
-    out
-}
-
-fn collect_sense_synonyms_recursive(sense: &Sense, out: &mut Vec<Value>) {
-    if !sense.synonyms.is_empty() {
-        out.push(json!({
-            "reference": sense.label.as_deref(),
-            "items": &sense.synonyms,
-        }));
-    }
-
-    for child in &sense.subsenses {
-        collect_sense_synonyms_recursive(child, out);
-    }
-}
-
-fn render_text(response: &LookupResponse, syntax: TextSyntax, layout: OutputLayout) -> String {
+fn render_text(
+    response: &LookupResponse,
+    syntax: TextSyntax,
+    layout: OutputLayout,
+    max_examples: Option<usize>,
+) -> String {
     let mut output = String::new();
 
     if syntax == TextSyntax::Human {
@@ -267,8 +117,12 @@ fn render_text(response: &LookupResponse, syntax: TextSyntax, layout: OutputLayo
     }
 
     match layout {
-        OutputLayout::BySource => render_text_by_source(response, syntax, &mut output),
-        OutputLayout::BySection => render_text_by_section(response, syntax, &mut output),
+        OutputLayout::BySource => {
+            render_text_by_source(response, syntax, max_examples, &mut output)
+        }
+        OutputLayout::BySection => {
+            render_text_by_section(response, syntax, max_examples, &mut output)
+        }
     }
 
     if !output.ends_with('\n') {
@@ -278,7 +132,12 @@ fn render_text(response: &LookupResponse, syntax: TextSyntax, layout: OutputLayo
     output
 }
 
-fn render_text_by_source(response: &LookupResponse, syntax: TextSyntax, output: &mut String) {
+fn render_text_by_source(
+    response: &LookupResponse,
+    syntax: TextSyntax,
+    max_examples: Option<usize>,
+    output: &mut String,
+) {
     for source in &response.results {
         push_heading(output, syntax, 1, source_title(source.source));
 
@@ -299,7 +158,13 @@ fn render_text_by_source(response: &LookupResponse, syntax: TextSyntax, output: 
             let mut wrote_section = false;
             for section in ContentSection::ALL {
                 let mut section_output = String::new();
-                render_entry_section_content(entry, section, syntax, &mut section_output);
+                render_entry_section_content(
+                    entry,
+                    section,
+                    syntax,
+                    max_examples,
+                    &mut section_output,
+                );
                 if section_output.is_empty() {
                     continue;
                 }
@@ -317,7 +182,12 @@ fn render_text_by_source(response: &LookupResponse, syntax: TextSyntax, output: 
     }
 }
 
-fn render_text_by_section(response: &LookupResponse, syntax: TextSyntax, output: &mut String) {
+fn render_text_by_section(
+    response: &LookupResponse,
+    syntax: TextSyntax,
+    max_examples: Option<usize>,
+    output: &mut String,
+) {
     let mut wrote_any = false;
 
     for section in ContentSection::ALL {
@@ -345,7 +215,7 @@ fn render_text_by_section(response: &LookupResponse, syntax: TextSyntax, output:
             push_heading(output, syntax, 2, source_title(source.source));
             for entry in entries_with_content {
                 push_entry_heading(output, syntax, 3, entry);
-                render_entry_section_content(entry, section, syntax, output);
+                render_entry_section_content(entry, section, syntax, max_examples, output);
             }
         }
     }
@@ -359,6 +229,7 @@ fn render_entry_section_content(
     entry: &DictionaryEntry,
     section: ContentSection,
     syntax: TextSyntax,
+    max_examples: Option<usize>,
     output: &mut String,
 ) {
     match section {
@@ -368,7 +239,7 @@ fn render_entry_section_content(
             }
         }
         ContentSection::Synonyms => render_synonyms(entry, syntax, output),
-        ContentSection::Definitions => render_definitions(entry, syntax, output),
+        ContentSection::Definitions => render_definitions(entry, syntax, max_examples, output),
         ContentSection::Idioms => render_idioms(entry, syntax, output),
     }
 }
@@ -417,33 +288,49 @@ fn collect_sense_synonym_items(senses: &[Sense], out: &mut Vec<SynonymItem>) {
     }
 }
 
-fn render_definitions(entry: &DictionaryEntry, syntax: TextSyntax, output: &mut String) {
+fn render_definitions(
+    entry: &DictionaryEntry,
+    syntax: TextSyntax,
+    max_examples: Option<usize>,
+    output: &mut String,
+) {
     for sense in &entry.senses {
-        render_sense_definition(sense, syntax, 0, output);
+        render_sense_definition(sense, syntax, 0, max_examples, output);
     }
 }
 
-fn render_sense_definition(sense: &Sense, syntax: TextSyntax, depth: usize, output: &mut String) {
+fn render_sense_definition(
+    sense: &Sense,
+    syntax: TextSyntax,
+    depth: usize,
+    max_examples: Option<usize>,
+    output: &mut String,
+) {
     if !sense_has_definition_section_content(sense) {
         return;
     }
 
     ensure_blank_line(output);
-    let line = sense_definition_line(sense);
+    let line = sense_definition_line(sense, syntax);
     if !line.is_empty() {
         push_bullet(output, syntax, depth, &line);
     }
 
-    if !sense.examples.is_empty() {
+    let rendered_examples = sense
+        .examples
+        .iter()
+        .take(max_examples.unwrap_or(usize::MAX));
+
+    if rendered_examples.len() > 0 {
         ensure_blank_line(output);
         push_label(output, syntax, depth + 1, "Examples:");
-        for example in &sense.examples {
+        for example in rendered_examples {
             push_bullet(output, syntax, depth + 2, example);
         }
     }
 
     for child in &sense.subsenses {
-        render_sense_definition(child, syntax, depth + 1, output);
+        render_sense_definition(child, syntax, depth + 1, max_examples, output);
     }
 }
 
@@ -459,7 +346,7 @@ fn sense_has_definition_section_content(sense: &Sense) -> bool {
             .any(sense_has_definition_section_content)
 }
 
-fn sense_definition_line(sense: &Sense) -> String {
+fn sense_definition_line(sense: &Sense, syntax: TextSyntax) -> String {
     let label = sense.label.as_deref().unwrap_or_default();
     let definition = sense.definition.as_deref().unwrap_or_default();
     let qualifiers = if sense.qualifiers.is_empty() {
@@ -471,8 +358,8 @@ fn sense_definition_line(sense: &Sense) -> String {
     match (label.is_empty(), definition.is_empty()) {
         (true, true) => String::new(),
         (true, false) => format!("{definition}{qualifiers}"),
-        (false, true) => format_label(label),
-        (false, false) => format!("{} {definition}{qualifiers}", format_label(label)),
+        (false, true) => format_label(label, syntax),
+        (false, false) => format!("{} {definition}{qualifiers}", format_label(label, syntax)),
     }
 }
 
@@ -526,7 +413,7 @@ fn push_referenced_bullet(
     text: &str,
 ) {
     let text = match reference.filter(|value| !value.is_empty()) {
-        Some(reference) => format!("{}: {text}", format_label(reference)),
+        Some(reference) => format!("{}: {text}", format_label(reference, syntax)),
         None => text.to_owned(),
     };
     push_bullet(output, syntax, depth, &text);
@@ -580,8 +467,11 @@ fn ensure_blank_line(output: &mut String) {
     output.push('\n');
 }
 
-fn format_label(label: &str) -> String {
-    format!("`{label}`")
+fn format_label(label: &str, syntax: TextSyntax) -> String {
+    match syntax {
+        TextSyntax::Org => format!("~{label}~"),
+        TextSyntax::Human | TextSyntax::Markdown => format!("`{label}`"),
+    }
 }
 
 fn render_entry_metadata(entry: &DictionaryEntry, output: &mut String) {
@@ -802,8 +692,13 @@ mod tests {
             )],
         };
 
-        let rendered = render(&response, OutputFormat::Markdown, OutputLayout::BySource)
-            .expect("markdown render");
+        let rendered = render(
+            &response,
+            OutputFormat::Markdown,
+            OutputLayout::BySource,
+            None,
+        )
+        .expect("markdown render");
 
         assert_eq!(
             rendered,
@@ -831,12 +726,181 @@ mod tests {
             )],
         };
 
-        let rendered = render(&response, OutputFormat::Markdown, OutputLayout::BySection)
-            .expect("markdown render");
+        let rendered = render(
+            &response,
+            OutputFormat::Markdown,
+            OutputLayout::BySection,
+            None,
+        )
+        .expect("markdown render");
 
         assert_eq!(
             rendered,
             "# Synonyms\n\n## Openthesaurus\n\n### Entry 1\n\n- Parkbank, Sitzbank\n"
+        );
+    }
+
+    #[test]
+    fn org_uses_tildes_for_labels() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Duden,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Bank".to_owned(),
+                    senses: vec![Sense {
+                        id: 1,
+                        label: Some("1a".to_owned()),
+                        definition: Some("erste Bedeutung".to_owned()),
+                        ..Sense::default()
+                    }],
+                    idioms: vec!["durch die Bank".to_owned()],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let rendered =
+            render(&response, OutputFormat::Org, OutputLayout::BySource, None).expect("org render");
+
+        assert!(rendered.contains("- ~1a~ erste Bedeutung"));
+    }
+
+    #[test]
+    fn org_uses_tildes_for_references() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Duden,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Bank".to_owned(),
+                    senses: vec![Sense {
+                        id: 1,
+                        label: Some("1a".to_owned()),
+                        idioms: vec!["durch die Bank".to_owned()],
+                        ..Sense::default()
+                    }],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let rendered =
+            render(&response, OutputFormat::Org, OutputLayout::BySource, None).expect("org render");
+
+        assert!(rendered.contains("- ~1a~: durch die Bank"));
+    }
+
+    #[test]
+    fn max_examples_limits_examples_per_definition() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Dwds,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Bank".to_owned(),
+                    senses: vec![Sense {
+                        id: 1,
+                        label: Some("1.".to_owned()),
+                        definition: Some("erste Bedeutung".to_owned()),
+                        examples: vec!["eins".to_owned(), "zwei".to_owned(), "drei".to_owned()],
+                        ..Sense::default()
+                    }],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let rendered = render(
+            &response,
+            OutputFormat::Markdown,
+            OutputLayout::BySource,
+            Some(2),
+        )
+        .expect("markdown render");
+
+        assert!(rendered.contains("    - eins\n    - zwei\n"));
+        assert!(!rendered.contains("    - drei\n"));
+    }
+
+    #[test]
+    fn max_examples_zero_omits_example_blocks() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Dwds,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Bank".to_owned(),
+                    senses: vec![Sense {
+                        id: 1,
+                        label: Some("1.".to_owned()),
+                        definition: Some("erste Bedeutung".to_owned()),
+                        examples: vec!["eins".to_owned()],
+                        ..Sense::default()
+                    }],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let rendered = render(
+            &response,
+            OutputFormat::Org,
+            OutputLayout::BySource,
+            Some(0),
+        )
+        .expect("org render");
+
+        assert!(rendered.contains("- ~1.~ erste Bedeutung"));
+        assert!(!rendered.contains("Examples:"));
+        assert!(!rendered.contains("- eins"));
+    }
+
+    #[test]
+    fn json_output_ignores_max_examples() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Dwds,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Bank".to_owned(),
+                    senses: vec![Sense {
+                        id: 1,
+                        label: Some("1.".to_owned()),
+                        definition: Some("erste Bedeutung".to_owned()),
+                        examples: vec!["eins".to_owned(), "zwei".to_owned()],
+                        ..Sense::default()
+                    }],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let full = render(&response, OutputFormat::Json, OutputLayout::BySource, None)
+            .expect("json render");
+        let limited = render(
+            &response,
+            OutputFormat::Json,
+            OutputLayout::BySource,
+            Some(1),
+        )
+        .expect("json render");
+        let parsed: serde_json::Value = serde_json::from_str(&limited).expect("valid json");
+
+        assert_eq!(full, limited);
+        assert_eq!(
+            parsed["results"][0]["entries"][0]["senses"][0]["examples"],
+            serde_json::json!(["eins", "zwei"])
         );
     }
 }
