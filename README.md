@@ -12,7 +12,7 @@ The project is intended to be installed from a Git clone, not published as a pub
 - Looks up German words and expressions across several sources.
 - Queries selected sources concurrently.
 - Provides structured JSON output as the stable integration format.
-- Provides human-readable terminal output for quick use.
+- Provides human-readable, Markdown, and Org output for quick use and notes.
 - Supports filtering by source and by content section.
 - Uses defensive HTML parsers, so source-specific website changes remain isolated in the corresponding modules.
 
@@ -111,13 +111,29 @@ woerterbuch Bank --sections definitions,examples,origin
 
 By default, `woerterbuch` prints human-readable terminal output.
 
-Use `--json` to return structured JSON:
+Use `--format` to choose an output format:
+
+```bash
+woerterbuch Bank --format human
+woerterbuch Bank --format json
+woerterbuch Bank --format markdown
+woerterbuch Bank --format org
+```
+
+`--json` is kept as a backwards-compatible shortcut for `--format json`:
 
 ```bash
 woerterbuch Bank --json
 ```
 
-JSON should be treated as the stable integration interface. Human-readable output is intended for terminal use and may change more freely.
+Use `--layout` to choose how formatted content is grouped:
+
+```bash
+woerterbuch Bank --format markdown --layout sources-sections
+woerterbuch Bank --format markdown --layout sections-sources
+```
+
+`--layout sources-sections` groups by source first, then by content section. `--layout sections-sources` groups by content section first, then by source. In text-like output, idioms are rendered as their own final section; sense-level idioms keep a reference such as `1a`. JSON should still be treated as the stable integration interface. Human-readable, Markdown, and Org output are intended for reading and may change more freely.
 
 ### Examples
 
@@ -158,6 +174,7 @@ Run directly from the repository without installing:
 ```bash
 cargo run -- Bank
 cargo run -- Bank --json
+cargo run -- Bank --format markdown --layout sections-sources
 cargo run -- Bank --sources dwds,duden
 ```
 
@@ -192,7 +209,7 @@ src/
   main.rs                 CLI, parallel source execution, output handling
   models.rs               JSON-native lookup data structures
   http.rs                 reqwest client, User-Agent setup, HTML helper
-  format.rs               human-readable terminal output
+  format.rs               human-readable, JSON, Markdown, and Org output
   sources.rs              source routing, timeouts, and section filtering
   sources/
     duden.rs              Duden fetcher and parser

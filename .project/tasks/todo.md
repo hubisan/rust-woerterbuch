@@ -16,14 +16,83 @@ Important files:
 
 Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiedenen Quellen — Duden, DWDS, Wiktionary und OpenThesaurus — via Scraping aggregiert, wird in ein performantes, asynchrones Rust-CLI-Tool umgewandelt.
 
-# TODO Additional output formats
+# NEXT Additional output formats
 
   - `--format human`
   - `--format json`
   - `--format markdown`
   - `--format org`
 
-- Make two variants of the ouput: Sources > Sections and Sections > Sources
+- Make two variants of the ouput: 
+  - by-source
+  - by-section
+
+# TODO JSON should not accept layout & max examples
+
+Clarify layout behavior for JSON output and add example limiting.
+
+Decision:
+- JSON output must remain source-native and stable.
+- `--layout` only affects human, markdown, and org output.
+- `--format json` and `--json` always return the existing JSON shape.
+- Reject `--format json --layout by-section` and `--format json --layout by-source` with a clear CLI error, unless `--layout` was not explicitly provided.
+- Keep `--json` as a shortcut for `--format json`.
+- Add `--max-examples <N>` to limit examples in rendered text outputs.
+  Behavior:
+  - Applies to human, markdown, and org output.
+  - Applies per definition/sense/subsense, not globally.
+  - If omitted, render all examples as today.
+  - If N = 0, render no examples.
+  - JSON output should remain unchanged and always contain all examples.
+  - The limit must apply consistently in both layouts:
+    - --layout by-source
+    - --layout by-section
+- JSON output must always include all examples unchanged.
+
+Implementation notes:
+- Make `layout` optional in the CLI instead of defaulting it immediately.
+- In main, resolve the effective layout only for text-like formats.
+- Default text layout should be `by-sources`.
+- If JSON format is selected and the user explicitly provided `--layout`, return an error.
+- Add `max_examples: Option<usize>` to the CLI args.
+- Pass `max_examples` into the text renderer.
+- Apply the limit per definition/sense/subsense, not globally.
+- If `--max-examples` is omitted, render all examples as today.
+- If `--max-examples 0` is used, render no examples.
+- Do not apply the limit in scraping/parsing or in the data model; apply it only when rendering text formats.
+- Remove the grouped/presentation JSON variant if it exists.
+- Remove or stop using any `format_json_by_sections` function if present.
+- Keep the existing source-native JSON serializer as the single JSON output path.
+
+Acceptance criteria:
+- `woerterbuch Bank --json` returns the existing JSON shape.
+- `woerterbuch Bank --format json` returns the existing JSON shape.
+- `woerterbuch Bank --format json --layout by-sections` fails with a clear error.
+- `woerterbuch Bank --format json --layout by-sources` fails with a clear error.
+- `woerterbuch Bank --format markdown` defaults to `--layout by-sources`.
+- `woerterbuch Bank --format markdown --layout by-sections` works.
+- `woerterbuch Bank --format human --max-examples 2` shows at most 2 examples per definition.
+- `woerterbuch Bank --format markdown --layout by-sections --max-examples 1` shows at most 1 example per definition.
+- `woerterbuch Bank --format org --max-examples 0` renders definitions without example blocks.
+- `woerterbuch Bank --json --max-examples 1` still returns full JSON with all examples unchanged, or alternatively fails with a clear error saying `--max-examples` only applies to human, markdown, and org. Prefer accepting it and leaving JSON unchanged.
+- `cargo fmt --all --check` passes.
+- `cargo test` passes.
+- `cargo clippy --all-targets --all-features -- -D warnings` passes.
+
+# TODO Add CLI option to limit the number of rendered examples per definition
+
+
+# TODO Fix Duden Umlaute
+
+Dies gibt aktuell kein Ergebnis:
+Gerüst: https://www.duden.de/rechtschreibung/Geruest
+verrückt: https://www.duden.de/rechtschreibung/verrueckt
+
+Ich gehe davon aus, dass dies aufgrund des Umlautes nicht geht.
+
+DWDS hat Umlaute: https://www.dwds.de/wb/Ger%C3%BCst
+Wiktionary auch: https://de.wiktionary.org/wiki/Ger%C3%BCst
+Openthesaurus auch: https://www.openthesaurus.de/synonyme/Ger%C3%BCcht
 
 # Release checkpoint
 

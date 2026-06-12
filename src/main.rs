@@ -5,6 +5,7 @@ mod sources;
 
 use anyhow::Result;
 use clap::Parser;
+use format::{OutputFormat, OutputLayout};
 use futures::future::join_all;
 use models::{LookupResponse, Section, Source};
 
@@ -16,8 +17,18 @@ struct Cli {
     query: String,
 
     /// Print structured JSON instead of human-readable terminal output.
-    #[arg(long)]
+    ///
+    /// This is kept as a backwards-compatible shortcut for `--format json`.
+    #[arg(long, conflicts_with = "format")]
     json: bool,
+
+    /// Output format: human,json,markdown,org.
+    #[arg(long, value_enum, default_value = "human")]
+    format: OutputFormat,
+
+    /// Output layout: sources-sections or sections-sources.
+    #[arg(long, value_enum, default_value = "sources-sections")]
+    layout: OutputLayout,
 
     /// Comma-separated sources: openthesaurus,dwds,duden,wiktionary.
     #[arg(long, value_delimiter = ',', value_enum)]
@@ -50,12 +61,13 @@ async fn main() -> Result<()> {
     let results = join_all(jobs).await;
 
     let response = LookupResponse { query, results };
-
-    if cli.json {
-        println!("{}", serde_json::to_string_pretty(&response)?);
+    let output_format = if cli.json {
+        OutputFormat::Json
     } else {
-        format::print_human(&response);
-    }
+        cli.format
+    };
+
+    print!("{}", format::render(&response, output_format, cli.layout)?);
 
     Ok(())
 }
