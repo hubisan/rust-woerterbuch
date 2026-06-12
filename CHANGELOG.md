@@ -4,6 +4,8 @@ This file records completed changes.
 
 ## Unreleased
 
+- `CHANGED`: Human output now renders sense labels and references with single quotes instead of backticks.
+- `CHANGED`: Text output now omits redundant `Entry 1` headings for sources that only have a single entry.
 - `FIXED`: Duden lookups now resolve words with umlauts and `ß` correctly by using the `ae/oe/ue/ss` URL spellings Duden expects.
 - `CHANGED`: Org output now uses `~label~`, JSON rejects `--layout`, and `--max-examples` limits rendered examples in text output.
 - `CHANGED`: Renamed output layouts to `by-source` and `by-section`, made `by-source` the default, and aligned text output spacing with the documented examples.

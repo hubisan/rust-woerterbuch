@@ -16,7 +16,24 @@ Important files:
 
 Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiedenen Quellen — Duden, DWDS, Wiktionary und OpenThesaurus — via Scraping aggregiert, wird in ein performantes, asynchrones Rust-CLI-Tool umgewandelt.
 
-# NEXT Omit redundant single-entry headings
+# TODO Release checkpoint
+
+- Fresh clone test:
+  - clone repo into an empty directory
+  - follow README installation steps only
+  - run `woerterbuch Bank`
+  - run `woerterbuch Bank --json`
+
+- Tag first private usable version:
+  - `v0.1.0`
+
+- Confirm README, CHANGELOG, CI, and basic Emacs usage are all in sync.
+
+# Abgeschlossen
+
+## DONE 2026-06-13 [Bei Human Format 'nr' statt `nr` verwenden](./archive/2026-06-13--human-format-single-quotes.md)
+
+## DONE 2026-06-13 [Omit redundant single-entry headings](./archive/2026-06-13--omit-redundant-single-entry-headings.md)
 
 Improve text rendering by omitting `Entry 1` headings when a source has only one entry.
 
@@ -42,21 +59,6 @@ Acceptance criteria:
 - `cargo fmt --all --check` passes.
 - `cargo test` passes.
 - `cargo clippy --all-targets --all-features -- -D warnings` passes.
-
-# TODO Release checkpoint
-
-- Fresh clone test:
-  - clone repo into an empty directory
-  - follow README installation steps only
-  - run `woerterbuch Bank`
-  - run `woerterbuch Bank --json`
-
-- Tag first private usable version:
-  - `v0.1.0`
-
-- Confirm README, CHANGELOG, CI, and basic Emacs usage are all in sync.
-
-# Abgeschlossen
 
 ## DONE 2026-06-13 [Fix Duden Umlaute](./archive/2026-06-12--fix-duden-umlaute.md)
 

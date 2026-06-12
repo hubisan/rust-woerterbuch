@@ -151,9 +151,15 @@ fn render_text_by_source(
             continue;
         }
 
+        let show_entry_headings = source.entries.len() > 1;
         for entry in &source.entries {
-            push_entry_heading(output, syntax, 2, entry);
-            render_entry_metadata(entry, output);
+            let section_heading_level = if show_entry_headings { 3 } else { 2 };
+            if show_entry_headings {
+                push_entry_heading(output, syntax, 2, entry);
+                render_entry_metadata(entry, output);
+            } else {
+                render_entry_metadata(entry, output);
+            }
 
             let mut wrote_section = false;
             for section in ContentSection::ALL {
@@ -169,7 +175,7 @@ fn render_text_by_source(
                     continue;
                 }
 
-                push_heading(output, syntax, 3, section.title());
+                push_heading(output, syntax, section_heading_level, section.title());
                 output.push('\n');
                 output.push_str(&section_output);
                 wrote_section = true;
@@ -213,8 +219,11 @@ fn render_text_by_section(
             }
 
             push_heading(output, syntax, 2, source_title(source.source));
+            let show_entry_headings = source.entries.len() > 1;
             for entry in entries_with_content {
-                push_entry_heading(output, syntax, 3, entry);
+                if show_entry_headings {
+                    push_entry_heading(output, syntax, 3, entry);
+                }
                 render_entry_section_content(entry, section, syntax, max_examples, output);
             }
         }
@@ -469,8 +478,9 @@ fn ensure_blank_line(output: &mut String) {
 
 fn format_label(label: &str, syntax: TextSyntax) -> String {
     match syntax {
+        TextSyntax::Human => format!("'{label}'"),
+        TextSyntax::Markdown => format!("`{label}`"),
         TextSyntax::Org => format!("~{label}~"),
-        TextSyntax::Human | TextSyntax::Markdown => format!("`{label}`"),
     }
 }
 
@@ -666,7 +676,7 @@ mod tests {
     }
 
     #[test]
-    fn markdown_by_source_renders_entry_sections_with_blank_lines() {
+    fn markdown_by_source_renders_single_entry_without_heading() {
         let response = LookupResponse {
             query: "Bank".to_owned(),
             results: vec![SourceResult::ok(
@@ -702,12 +712,51 @@ mod tests {
 
         assert_eq!(
             rendered,
-            "# Dwds\n\n## Entry 1\n\nTitle: Bank, die\nPart of speech: Substantiv\nGrammar: feminin\n\n### Etymology\n\nvon alt\n\n### Definitions\n\n- `1.` erste Bedeutung\n\n  Examples:\n    - ein Beispiel\n\n### Idioms\n\n- durch die Bank\n"
+            "# Dwds\n\nTitle: Bank, die\nPart of speech: Substantiv\nGrammar: feminin\n\n## Etymology\n\nvon alt\n\n## Definitions\n\n- `1.` erste Bedeutung\n\n  Examples:\n    - ein Beispiel\n\n## Idioms\n\n- durch die Bank\n"
         );
     }
 
     #[test]
-    fn markdown_by_section_renders_source_before_entry_with_blank_lines() {
+    fn markdown_by_source_omits_single_entry_heading() {
+        let response = LookupResponse {
+            query: "Buch".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Dwds,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Buch".to_owned(),
+                    title: Some("Buch, das".to_owned()),
+                    part_of_speech: Some("Substantiv".to_owned()),
+                    grammar: Some("neutrum".to_owned()),
+                    etymology: Some("von alt".to_owned()),
+                    senses: vec![Sense {
+                        id: 1,
+                        label: Some("1.".to_owned()),
+                        definition: Some("ein Werk".to_owned()),
+                        ..Sense::default()
+                    }],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let rendered = render(
+            &response,
+            OutputFormat::Markdown,
+            OutputLayout::BySource,
+            None,
+        )
+        .expect("markdown render");
+
+        assert!(!rendered.contains("## Entry 1"));
+        assert!(rendered.contains("# Dwds\n\nTitle: Buch, das"));
+        assert!(rendered.contains("\n## Etymology\n\nvon alt\n"));
+        assert!(rendered.contains("\n## Definitions\n\n- `1.` ein Werk\n"));
+    }
+
+    #[test]
+    fn markdown_by_section_renders_single_entry_without_heading() {
         let response = LookupResponse {
             query: "Bank".to_owned(),
             results: vec![SourceResult::ok(
@@ -736,8 +785,141 @@ mod tests {
 
         assert_eq!(
             rendered,
-            "# Synonyms\n\n## Openthesaurus\n\n### Entry 1\n\n- Parkbank, Sitzbank\n"
+            "# Synonyms\n\n## Openthesaurus\n\n- Parkbank, Sitzbank\n"
         );
+    }
+
+    #[test]
+    fn markdown_by_source_keeps_headings_for_multiple_entries() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Dwds,
+                Some(UrlValue::Many(vec![
+                    "https://example.test/1".to_owned(),
+                    "https://example.test/2".to_owned(),
+                ])),
+                vec![
+                    DictionaryEntry {
+                        id: 1,
+                        headword: "Bank".to_owned(),
+                        senses: vec![Sense {
+                            id: 1,
+                            label: Some("1.".to_owned()),
+                            definition: Some("erste Bedeutung".to_owned()),
+                            ..Sense::default()
+                        }],
+                        ..DictionaryEntry::default()
+                    },
+                    DictionaryEntry {
+                        id: 2,
+                        headword: "Bank".to_owned(),
+                        senses: vec![Sense {
+                            id: 1,
+                            label: Some("1.".to_owned()),
+                            definition: Some("zweite Bedeutung".to_owned()),
+                            ..Sense::default()
+                        }],
+                        ..DictionaryEntry::default()
+                    },
+                ],
+            )],
+        };
+
+        let rendered = render(
+            &response,
+            OutputFormat::Markdown,
+            OutputLayout::BySource,
+            None,
+        )
+        .expect("markdown render");
+
+        assert!(rendered.contains("## Entry 1"));
+        assert!(rendered.contains("## Entry 2"));
+        assert!(rendered.contains("\n### Definitions\n\n- `1.` erste Bedeutung\n"));
+        assert!(rendered.contains("\n### Definitions\n\n- `1.` zweite Bedeutung\n"));
+    }
+
+    #[test]
+    fn markdown_by_section_keeps_headings_for_multiple_entries() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Openthesaurus,
+                Some(UrlValue::Many(vec![
+                    "https://example.test/1".to_owned(),
+                    "https://example.test/2".to_owned(),
+                ])),
+                vec![
+                    DictionaryEntry {
+                        id: 1,
+                        headword: "Bank".to_owned(),
+                        synonym_groups: vec![SynonymGroup {
+                            sense: None,
+                            categories: Vec::new(),
+                            items: vec!["Parkbank".to_owned()],
+                        }],
+                        ..DictionaryEntry::default()
+                    },
+                    DictionaryEntry {
+                        id: 2,
+                        headword: "Bank".to_owned(),
+                        synonym_groups: vec![SynonymGroup {
+                            sense: None,
+                            categories: Vec::new(),
+                            items: vec!["Sitzbank".to_owned()],
+                        }],
+                        ..DictionaryEntry::default()
+                    },
+                ],
+            )],
+        };
+
+        let rendered = render(
+            &response,
+            OutputFormat::Markdown,
+            OutputLayout::BySection,
+            None,
+        )
+        .expect("markdown render");
+
+        assert!(rendered.contains("### Entry 1"));
+        assert!(rendered.contains("### Entry 2"));
+        assert!(rendered.contains("- Parkbank"));
+        assert!(rendered.contains("- Sitzbank"));
+    }
+
+    #[test]
+    fn markdown_by_section_omits_single_entry_heading() {
+        let response = LookupResponse {
+            query: "Buch".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Dwds,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Buch".to_owned(),
+                    senses: vec![Sense {
+                        id: 1,
+                        label: Some("1.".to_owned()),
+                        definition: Some("ein Werk".to_owned()),
+                        ..Sense::default()
+                    }],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let rendered = render(
+            &response,
+            OutputFormat::Markdown,
+            OutputLayout::BySection,
+            None,
+        )
+        .expect("markdown render");
+
+        assert!(!rendered.contains("### Entry 1"));
+        assert!(rendered.contains("# Definitions\n\n## Dwds\n\n- `1.` ein Werk\n"));
     }
 
     #[test]
@@ -769,6 +951,34 @@ mod tests {
     }
 
     #[test]
+    fn human_uses_single_quotes_for_labels() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Duden,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Bank".to_owned(),
+                    senses: vec![Sense {
+                        id: 1,
+                        label: Some("1a".to_owned()),
+                        definition: Some("erste Bedeutung".to_owned()),
+                        ..Sense::default()
+                    }],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let rendered = render(&response, OutputFormat::Human, OutputLayout::BySource, None)
+            .expect("human render");
+
+        assert!(rendered.contains("- '1a' erste Bedeutung"));
+        assert!(!rendered.contains("- `1a` erste Bedeutung"));
+    }
+
+    #[test]
     fn org_uses_tildes_for_references() {
         let response = LookupResponse {
             query: "Bank".to_owned(),
@@ -793,6 +1003,34 @@ mod tests {
             render(&response, OutputFormat::Org, OutputLayout::BySource, None).expect("org render");
 
         assert!(rendered.contains("- ~1a~: durch die Bank"));
+    }
+
+    #[test]
+    fn human_uses_single_quotes_for_references() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Duden,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Bank".to_owned(),
+                    senses: vec![Sense {
+                        id: 1,
+                        label: Some("1a".to_owned()),
+                        idioms: vec!["durch die Bank".to_owned()],
+                        ..Sense::default()
+                    }],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let rendered = render(&response, OutputFormat::Human, OutputLayout::BySource, None)
+            .expect("human render");
+
+        assert!(rendered.contains("- '1a': durch die Bank"));
+        assert!(!rendered.contains("- `1a`: durch die Bank"));
     }
 
     #[test]
