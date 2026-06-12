@@ -9,7 +9,7 @@ use futures::future::join_all;
 use models::{LookupResponse, Section, Source};
 
 #[derive(Debug, Parser)]
-#[command(name = "rust-woerterbuch")]
+#[command(name = "woerterbuch")]
 #[command(about = "Async CLI for German dictionary lookups", long_about = None)]
 struct Cli {
     /// Lookup word or expression, for example "Bank".

@@ -18,3 +18,7 @@ urlencoding = "2"
 
 [dev-dependencies]
 pretty_assertions = "1"
+
+[[bin]]
+name = "woerterbuch"
+path = "src/main.rs"-

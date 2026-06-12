@@ -4,6 +4,8 @@ This file records completed changes.
 
 ## Unreleased
 
+- `ADDED` Github CI for automated testing.
+- `CHANGED` Renamed binary to `woerterbuch`.
 - `CHANGED`: Clarified human-readable source status messages so skipped sections, missing entries, and real errors are shown differently.
 - `FIXED`: Fixed `--sections` filtering so requested nested examples, idioms, and synonyms are preserved and unsupported source/section combinations are skipped cleanly.
 - `ADDED`: Added structured parsers and offline snapshot tests for Duden, Wiktionary, OpenThesaurus, and DWDS.
