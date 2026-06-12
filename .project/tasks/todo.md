@@ -16,7 +16,34 @@ Important files:
 
 Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiedenen Quellen — Duden, DWDS, Wiktionary und OpenThesaurus — via Scraping aggregiert, wird in ein performantes, asynchrones Rust-CLI-Tool umgewandelt.
 
-# DONE Additional output formats
+# NEXT Fix Duden Umlaute
+
+Dies gibt aktuell kein Ergebnis:
+Gerüst: https://www.duden.de/rechtschreibung/Geruest
+verrückt: https://www.duden.de/rechtschreibung/verrueckt
+
+Ich gehe davon aus, dass dies aufgrund des Umlautes nicht geht.
+
+DWDS hat Umlaute: https://www.dwds.de/wb/Ger%C3%BCst
+Wiktionary auch: https://de.wiktionary.org/wiki/Ger%C3%BCst
+Openthesaurus auch: https://www.openthesaurus.de/synonyme/Ger%C3%BCcht
+
+# TODO Release checkpoint
+
+- Fresh clone test:
+  - clone repo into an empty directory
+  - follow README installation steps only
+  - run `woerterbuch Bank`
+  - run `woerterbuch Bank --json`
+
+- Tag first private usable version:
+  - `v0.1.0`
+
+- Confirm README, CHANGELOG, CI, and basic Emacs usage are all in sync.
+
+# Abgeschlossen
+
+## DONE 2026-06-12 Additional output formats
 
   - `--format human`
   - `--format json`
@@ -29,18 +56,18 @@ Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiede
   - by-section
     Example for markdown [example-output-markdown--by-section.md](example-output-markdown--by-section.md)
 
-# DONE [Fix Compiler Warnings](./2026-06-12--output-layout-naming-and-spacing.md)
+## DONE 2026-06-12 [Fix Compiler Warnings](./2026-06-12--output-layout-naming-and-spacing.md)
 
-# DONE [Rename sources-sections and sections-sources](./2026-06-12--output-layout-naming-and-spacing.md)
+## DONE 2026-06-12 [Rename sources-sections and sections-sources](./2026-06-12--output-layout-naming-and-spacing.md)
 
 sources-sections to by-source
 sections-sources to by-section
 
-# DONE [Change Default](./2026-06-12--output-layout-naming-and-spacing.md)
+## DONE 2026-06-12 [Change Default](./2026-06-12--output-layout-naming-and-spacing.md)
 
 Default is by-source
 
-# DONE [Fix newlines](./2026-06-12--output-layout-naming-and-spacing.md)
+## DONE 2026-06-12 [Fix newlines](./archive/2026-06-12--output-layout-naming-and-spacing.md)
 
 Make the output use newlines as shown in the examples:
 
@@ -49,13 +76,13 @@ Make the output use newlines as shown in the examples:
 - by-section
   Example for markdown [example-output-markdown--by-section.md](example-output-markdown--by-section.md)
 
-# DONE [Org-mode use ~nr~ instead of `nr`](./2026-06-12--json-layout-org-labels-and-max-examples.md)
+## DONE 2026-06-12 [Org-mode use ~nr~ instead of `nr`](./archive/2026-06-12--json-layout-org-labels-and-max-examples.md)
 
-# DONE [JSON should not accept layout](./2026-06-12--json-layout-org-labels-and-max-examples.md)
+## DONE 2026-06-12 [JSON should not accept layout](./2026-06-12--json-layout-org-labels-and-max-examples.md)
 
 Clarify layout behavior for JSON output.
 
-## Decision
+### Decision
 
 * JSON output must remain source-native and stable.
 * `--format json` and `--json` always return the existing JSON shape.
@@ -74,7 +101,7 @@ Clarify layout behavior for JSON output.
 * Remove the grouped/presentation JSON variant if it exists.
 * Keep the existing source-native JSON serializer as the single JSON output path.
 
-## Implementation notes
+### Implementation notes
 
 * Make `layout` optional in the CLI instead of defaulting it immediately.
 * In `main`, resolve the effective layout only for text-like formats.
@@ -83,7 +110,7 @@ Clarify layout behavior for JSON output.
 * Remove or stop using any `format_json_by_sections` / `format_json_by_section` function if present.
 * Do not add a second JSON schema for section-grouped output.
 
-## Acceptance criteria
+### Acceptance criteria
 
 * `woerterbuch Bank --json` returns the existing JSON shape.
 * `woerterbuch Bank --format json` returns the existing JSON shape.
@@ -97,11 +124,12 @@ Clarify layout behavior for JSON output.
 * `cargo test` passes.
 * `cargo clippy --all-targets --all-features -- -D warnings` passes.
 
-# DONE [Limit rendered examples per definition](./2026-06-12--json-layout-org-labels-and-max-examples.md)
+
+## DONE 2026-06-12 [Limit rendered examples per definition](./2026-06-12--json-layout-org-labels-and-max-examples.md)
 
 Add a CLI option to limit the number of rendered examples per definition.
 
-## Decision
+### Decision
 
 * Add `--max-examples <N>`.
 * The option limits examples only in rendered text outputs:
@@ -118,7 +146,7 @@ Add a CLI option to limit the number of rendered examples per definition.
   * `--layout by-section`
 * JSON output must remain unchanged and always contain all examples.
 
-## Implementation notes
+### Implementation notes
 
 * Add `max_examples: Option<usize>` to the CLI args.
 * Pass `max_examples` into the text renderer.
@@ -128,7 +156,7 @@ Add a CLI option to limit the number of rendered examples per definition.
 * For JSON output, ignore `--max-examples` and return the full existing JSON unchanged.
 * Prefer accepting `woerterbuch Bank --json --max-examples 1` and leaving JSON unchanged instead of failing.
 
-## Acceptance criteria
+### Acceptance criteria
 
 * `woerterbuch Bank --format human --max-examples 2` shows at most 2 examples per definition.
 * `woerterbuch Bank --format markdown --max-examples 2` shows at most 2 examples per definition.
@@ -141,33 +169,6 @@ Add a CLI option to limit the number of rendered examples per definition.
 * `cargo fmt --all --check` passes.
 * `cargo test` passes.
 * `cargo clippy --all-targets --all-features -- -D warnings` passes.
-
-# TODO Fix Duden Umlaute
-
-Dies gibt aktuell kein Ergebnis:
-Gerüst: https://www.duden.de/rechtschreibung/Geruest
-verrückt: https://www.duden.de/rechtschreibung/verrueckt
-
-Ich gehe davon aus, dass dies aufgrund des Umlautes nicht geht.
-
-DWDS hat Umlaute: https://www.dwds.de/wb/Ger%C3%BCst
-Wiktionary auch: https://de.wiktionary.org/wiki/Ger%C3%BCst
-Openthesaurus auch: https://www.openthesaurus.de/synonyme/Ger%C3%BCcht
-
-# Release checkpoint
-
-- Fresh clone test:
-  - clone repo into an empty directory
-  - follow README installation steps only
-  - run `woerterbuch Bank`
-  - run `woerterbuch Bank --json`
-
-- Tag first private usable version:
-  - `v0.1.0`
-
-- Confirm README, CHANGELOG, CI, and basic Emacs usage are all in sync.
-
-# Abgeschlossen
 
 ## DONE 2026-06-12 [Refresh source fixtures and expected JSON output](./archive/2026-06-12--refresh-source-fixtures-and-json-expected-output.md)
 
