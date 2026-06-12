@@ -40,12 +40,13 @@ pub async fn lookup(client: &Client, query: &str) -> Result<SourceResult> {
             }
         },
         Err(entry_err) => match await_search_response(search_handle).await {
-            Ok(search_response) => match process_search_response(client, query, search_response).await
-            {
-                Ok(result) if result.ok => Ok(result),
-                Ok(_no_match) => Err(entry_err),
-                Err(_search_err) => Err(entry_err),
-            },
+            Ok(search_response) => {
+                match process_search_response(client, query, search_response).await {
+                    Ok(result) if result.ok => Ok(result),
+                    Ok(_no_match) => Err(entry_err),
+                    Err(_search_err) => Err(entry_err),
+                }
+            }
             Err(_join_or_search_err) => Err(entry_err),
         },
     }

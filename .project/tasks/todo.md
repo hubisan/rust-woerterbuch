@@ -18,11 +18,38 @@ Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiede
 
 # Projekt finalisieren
 
-## TODO Mit ChatGPT weiteres Vorgehen definieren
+## Near term
 
-## TODO Macht Emacs Module überhaupt Sinn?
+- Fix remaining Clippy warnings:
+  - Replace DWDS manual `iter().any(...)` check with `contains(...)`.
+  - Move `dedupe(...)` before the test module in `models.rs`.
 
-Kann ja einfach CLI und dann Json parsen, ist schnell.
+- Confirm installed binary name:
+  - `cargo install --path .`
+  - `woerterbuch --help`
+  - `woerterbuch Bank --json`
+
+## Later improvements
+
+- Consider additional output formats:
+  - `--format human`
+  - `--format json`
+  - `--format markdown`
+  - `--format org`
+- Make two variants of the ouput: Sources > Sections and Sections > Sources
+
+## Release checkpoint
+
+- Fresh clone test:
+  - clone repo into an empty directory
+  - follow README installation steps only
+  - run `woerterbuch Bank`
+  - run `woerterbuch Bank --json`
+
+- Tag first private usable version:
+  - `v0.1.0`
+
+- Confirm README, CHANGELOG, CI, and basic Emacs usage are all in sync.
 
 # Abgeschlossen
 

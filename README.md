@@ -1,19 +1,68 @@
-# rust-woerterbuch
+# woerterbuch
 
-A small async Rust CLI for German dictionary lookups across OpenThesaurus, DWDS, Duden, and Wiktionary.
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Tests](https://github.com/hubisan/rust-woerterbuch/actions/workflows/ci.yml/badge.svg)](https://github.com/hubisan/woerterbuch/actions/workflows/tests.yml)
 
-## Goal
+`woerterbuch` is a small async Rust CLI for German dictionary lookups. It queries multiple German-language sources and returns either human-readable terminal output or structured JSON for Emacs, scripts, and other tools.
 
-`rust-woerterbuch` queries multiple German-language dictionary sources in parallel and returns structured lookup results. Output can be printed in a human-readable terminal format or as JSON for Emacs, scripts, and AI agents.
+The project is intended to be installed from a Git clone, not published as a public Cargo package.
 
-The tool deliberately sends the user query directly to each backend. There is no lemma normalization step in the CLI, because it adds complexity and can produce surprising source-specific behavior.
+## Features
 
-Planned sources:
+- Looks up German words and expressions across several sources.
+- Queries selected sources concurrently.
+- Provides structured JSON output as the stable integration format.
+- Provides human-readable terminal output for quick use.
+- Supports filtering by source and by content section.
+- Uses defensive HTML parsers, so source-specific website changes remain isolated in the corresponding modules.
 
-- OpenThesaurus
-- DWDS
-- Duden, preferably via the lightweight AMP page
-- Wiktionary, via the REST HTML API: `https://de.wiktionary.org/api/rest_v1/page/html/{word}`
+## Installation from Git clone
+
+Clone the repository and build the release binary:
+
+```bash
+git clone https://github.com/hubisan/rust-woerterbuch
+cd rust-woerterbuch
+cargo build --release
+```
+
+The compiled binary is then available at:
+
+```bash
+./target/release/woerterbuch
+```
+
+For local installation into Cargo's binary directory:
+
+```bash
+cargo install --path .
+```
+
+After that, the command should be available as:
+
+```bash
+woerterbuch Bank --json
+```
+
+## Usage
+
+### Options
+
+`woerterbuch` takes the lookup query as its main argument:
+
+```bash
+woerterbuch <QUERY>
+````
+
+Example:
+
+```bash
+woerterbuch Bank
+```
+
+#### Sources
+
+Use `--sources` to select which dictionary sources should be queried.
 
 Default source order:
 
@@ -21,88 +70,135 @@ Default source order:
 openthesaurus,dwds,duden,wiktionary
 ```
 
-## Usage
+Supported sources:
+
+- `openthesaurus`
+- `dwds`
+- `duden`
+- `wiktionary`
+
+Example:
+
+```bash
+woerterbuch Bank --sources dwds,duden
+```
+
+Network lookups can be slow depending on the selected source. Duden in particular may sometimes respond slowly.
+
+#### Sections
+
+Use `--sections` to select which content sections should be included in the lookup result.
+
+Common sections:
+
+* `definitions`
+* `synonyms`
+* `examples`
+* `origin`
+* `grammar`
+* `pronunciation`
+
+Examples:
+
+```bash
+woerterbuch Bank --sections definitions,synonyms
+woerterbuch Bank --sections definitions,examples,origin
+```
+
+#### Output
+
+By default, `woerterbuch` prints human-readable terminal output.
+
+Use `--json` to return structured JSON:
+
+```bash
+woerterbuch Bank --json
+```
+
+JSON should be treated as the stable integration interface. Human-readable output is intended for terminal use and may change more freely.
+
+### Examples
+
+Basic lookup:
+
+```bash
+woerterbuch Bank
+```
+
+JSON output:
+
+```bash
+woerterbuch Bank --json
+```
+
+Use selected sources only:
+
+```bash
+woerterbuch Bank --sources dwds,duden
+woerterbuch Bank --sources openthesaurus,wiktionary
+```
+
+Use selected sections only:
+
+```bash
+woerterbuch Bank --sections definitions,synonyms
+woerterbuch Bank --sections definitions,examples,origin
+```
+
+Show command-line help:
+
+```bash
+woerterbuch --help
+```
+
+Run directly from the repository without installing:
 
 ```bash
 cargo run -- Bank
 cargo run -- Bank --json
-cargo run -- Bank --sources wiktionary,openthesaurus
-cargo run -- Bank --sections definitions,synonyms
+cargo run -- Bank --sources dwds,duden
 ```
 
-## JSON shape
+## Development
 
-The JSON output is intentionally designed as a native API-style structure, not as a direct copy of the Emacs Lisp plist format.
+Run the usual checks before committing:
 
-```json
-{
-  "query": "Bank",
-  "results": [
-    {
-      "source": "dwds",
-      "ok": true,
-      "url": "https://www.dwds.de/wb/Bank",
-      "entries": [
-        {
-          "id": 1,
-          "homograph": "1",
-          "headword": "Bank",
-          "title": "Bank, die",
-          "part_of_speech": "Substantiv",
-          "grammar": "Substantiv (Femininum)",
-          "etymology": "...",
-          "idioms": ["durch die Bank"],
-          "synonym_groups": [],
-          "senses": [
-            {
-              "id": 1,
-              "source_id": "d-1-1",
-              "label": "1.",
-              "definition": "Sitz fuer mehrere Personen nebeneinander, meist aus Holz",
-              "qualifiers": [],
-              "examples": [],
-              "idioms": [],
-              "synonyms": [],
-              "subsenses": []
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+```bash
+cargo fmt
+cargo test
+cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-Definitions are recursive through `subsenses`, so nested meanings from DWDS, Duden, and Wiktionary can be represented without flattening.
+Build the release binary:
+
+```bash
+cargo build --release
+```
+
+Generate local Rust documentation:
+
+```bash
+cargo doc --no-deps --open
+```
+
+Live HTTP smoke tests are intentionally not part of the default recommendation, because external dictionary websites can be slow, temporarily unavailable, or change their HTML. Parser tests with local fixtures are more reliable for CI.
 
 ## Project structure
 
 ```text
 src/
-  main.rs                 CLI, parallel execution, output handling
+  main.rs                 CLI, parallel source execution, output handling
   models.rs               JSON-native lookup data structures
   http.rs                 reqwest client, User-Agent setup, HTML helper
-  format.rs               Human-readable terminal output
-  sources.rs              Source routing, timeouts, and section filtering
+  format.rs               human-readable terminal output
+  sources.rs              source routing, timeouts, and section filtering
   sources/
-    duden.rs              Duden fetch and parser scaffold
-    dwds.rs               DWDS fetch and parser scaffold
-    wiktionary.rs         Wiktionary REST HTML fetch and parser scaffold
-    openthesaurus.rs      OpenThesaurus fetch and parser scaffold
+    duden.rs              Duden fetcher and parser
+    dwds.rs               DWDS fetcher and parser
+    wiktionary.rs         Wiktionary REST HTML fetcher and parser
+    openthesaurus.rs      OpenThesaurus fetcher and parser
 ```
-
-## Next steps
-
-1. Copy the existing Emacs Lisp backend files into the project directory for reference.
-2. Refine the CSS selectors for each source based on the old backend logic and the current HTML output.
-3. Add local HTML fixtures and parser tests before optimizing live requests.
-4. Port each backend one by one, starting with OpenThesaurus or DWDS.
-5. Consider adding rate limiting and caching once the basic parser logic is stable.
 
 ## License
 
 This project is licensed under the GNU General Public License v3.0. See [`LICENSE`](LICENSE) for details.
-
-## Notes
-
-The parsers are intentionally defensive and template-oriented. Websites can change their HTML structure, so source-specific selector adjustments should stay isolated in the corresponding modules.
