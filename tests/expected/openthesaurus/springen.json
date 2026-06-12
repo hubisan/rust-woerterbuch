@@ -1,0 +1,76 @@
+{
+  "source": "openthesaurus",
+  "ok": true,
+  "url": "https://www.openthesaurus.de/synonyme/springen",
+  "entries": [
+    {
+      "id": 1,
+      "headword": "springen",
+      "synonym_groups": [
+        {
+          "items": [
+            "hibbeln",
+            "hoppeln",
+            "hopsen",
+            "hüpfen",
+            "jumpen"
+          ]
+        },
+        {
+          "items": [
+            "aufplatzen",
+            "bersten",
+            "in Scherben gehen",
+            "in tausend Stücke zerspringen",
+            "platzen",
+            "splittern",
+            "zerbrechen",
+            "zerplatzen",
+            "zerschellen",
+            "zersplittern",
+            "zerspringen",
+            "zu Bruch gehen",
+            "zerbersten"
+          ]
+        },
+        {
+          "items": [
+            "herausspringen",
+            "schnell verlassen",
+            "springen (aus)",
+            "rausspringen"
+          ]
+        },
+        {
+          "items": [
+            "sich (von irgendwoher) hinabfallen lassen",
+            "sich hinabstürzen (von / aus ...)",
+            "sich stürzen (von irgendwoher)",
+            "(von irgendwoher) springen"
+          ]
+        },
+        {
+          "items": [
+            "springen (über)",
+            "hopsen (über)",
+            "hüpfen (über)",
+            "jumpen (über)"
+          ]
+        },
+        {
+          "items": [
+            "gehorchen",
+            "Anweisungen befolgen",
+            "(den Anordnungen) Folge leisten",
+            "parieren",
+            "(nach jemandes) Pfeife tanzen",
+            "tun, was man gesagt bekommt",
+            "(sich) Weisungen fügen",
+            "spuren"
+          ]
+        }
+      ],
+      "url": "https://www.openthesaurus.de/synonyme/springen"
+    }
+  ]
+}

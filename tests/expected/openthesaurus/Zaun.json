@@ -1,0 +1,27 @@
+{
+  "source": "openthesaurus",
+  "ok": true,
+  "url": "https://www.openthesaurus.de/synonyme/Zaun",
+  "entries": [
+    {
+      "id": 1,
+      "headword": "Zaun",
+      "synonym_groups": [
+        {
+          "items": [
+            "Einzäunung",
+            "Umzäunung",
+            "Fenz"
+          ]
+        },
+        {
+          "items": [
+            "Gatter",
+            "Gitter"
+          ]
+        }
+      ],
+      "url": "https://www.openthesaurus.de/synonyme/Zaun"
+    }
+  ]
+}

@@ -59,7 +59,7 @@ fn response_error(status: StatusCode, body: &str) -> Result<()> {
     ))
 }
 
-fn not_found_result(query: &str, page_url: &str) -> SourceResult {
+pub fn not_found_result_for_fixture(query: &str, page_url: &str) -> SourceResult {
     SourceResult {
         source: Source::Wiktionary,
         ok: false,
@@ -67,6 +67,10 @@ fn not_found_result(query: &str, page_url: &str) -> SourceResult {
         entries: Vec::new(),
         error: Some(format!("No matches found for {query}").replace(&format!(" for {query}"), "")),
     }
+}
+
+fn not_found_result(query: &str, page_url: &str) -> SourceResult {
+    not_found_result_for_fixture(query, page_url)
 }
 
 fn extract_entries(document: &Html, lemma: &str, page_url: &str) -> Vec<DictionaryEntry> {
@@ -585,27 +589,37 @@ mod tests {
     }
 
     #[test]
-    fn matches_expected_snapshots_for_local_fixtures() {
+    fn matches_expected_json_for_local_fixtures() {
         let cases = [
             SnapshotCase {
                 word: "Bank",
-                fixture: include_str!("../../tests/fixtures/wiktionary/Bank.html"),
-                expected: include_str!("../../tests/snapshots/wiktionary/Bank.snap"),
+                fixture: include_str!("../../tests/fixtures/wiktionary/Bank/page.html"),
+                expected: include_str!("../../tests/expected/wiktionary/Bank.json"),
             },
             SnapshotCase {
                 word: "Haus",
-                fixture: include_str!("../../tests/fixtures/wiktionary/Haus.html"),
-                expected: include_str!("../../tests/snapshots/wiktionary/Haus.snap"),
+                fixture: include_str!("../../tests/fixtures/wiktionary/Haus/page.html"),
+                expected: include_str!("../../tests/expected/wiktionary/Haus.json"),
+            },
+            SnapshotCase {
+                word: "Zaun",
+                fixture: include_str!("../../tests/fixtures/wiktionary/Zaun/page.html"),
+                expected: include_str!("../../tests/expected/wiktionary/Zaun.json"),
             },
             SnapshotCase {
                 word: "springen",
-                fixture: include_str!("../../tests/fixtures/wiktionary/springen.html"),
-                expected: include_str!("../../tests/snapshots/wiktionary/springen.snap"),
+                fixture: include_str!("../../tests/fixtures/wiktionary/springen/page.html"),
+                expected: include_str!("../../tests/expected/wiktionary/springen.json"),
             },
             SnapshotCase {
                 word: "Wolke",
-                fixture: include_str!("../../tests/fixtures/wiktionary/Wolke.html"),
-                expected: include_str!("../../tests/snapshots/wiktionary/Wolke.snap"),
+                fixture: include_str!("../../tests/fixtures/wiktionary/Wolke/page.html"),
+                expected: include_str!("../../tests/expected/wiktionary/Wolke.json"),
+            },
+            SnapshotCase {
+                word: "verlieben",
+                fixture: include_str!("../../tests/fixtures/wiktionary/verlieben/page.html"),
+                expected: include_str!("../../tests/expected/wiktionary/verlieben.json"),
             },
         ];
 
@@ -618,9 +632,9 @@ mod tests {
             .expect("fixture parses");
 
             assert_eq!(
-                render_snapshot(&response),
+                serde_json::to_string_pretty(&response).expect("response serializes"),
                 case.expected.trim_end(),
-                "snapshot mismatch for {}",
+                "expected JSON mismatch for {}",
                 case.word
             );
         }
@@ -634,8 +648,8 @@ mod tests {
         );
 
         assert_eq!(
-            render_snapshot(&response),
-            include_str!("../../tests/snapshots/wiktionary/Nixdaexistiert.snap").trim_end()
+            serde_json::to_string_pretty(&response).expect("response serializes"),
+            include_str!("../../tests/expected/wiktionary/Nixdaexistiert.json").trim_end()
         );
     }
 
@@ -689,66 +703,5 @@ mod tests {
         assert_eq!(senses[1].label.as_deref(), Some("2"));
         assert_eq!(senses[1].definition.as_deref(), Some("zweite Bedeutung"));
         assert_eq!(senses[1].examples, vec!["zweites Beispiel".to_owned()]);
-    }
-
-    fn render_snapshot(response: &SourceResult) -> String {
-        let mut lines = vec![
-            format!("source={:?}", response.source),
-            format!("ok={}", response.ok),
-            format!(
-                "url={}",
-                match response.url.as_ref() {
-                    Some(UrlValue::One(url)) => url.as_str(),
-                    Some(UrlValue::Many(urls)) => panic!("unexpected multi-url snapshot: {urls:?}"),
-                    None => "-",
-                }
-            ),
-        ];
-
-        if let Some(error) = &response.error {
-            lines.push(format!("error={error}"));
-        }
-
-        for entry in &response.entries {
-            lines.push(format!(
-                "entry {} headword={} title={} part_of_speech={} grammar={}",
-                entry.id,
-                entry.headword,
-                entry.title.as_deref().unwrap_or("-"),
-                entry.part_of_speech.as_deref().unwrap_or("-"),
-                entry.grammar.as_deref().unwrap_or("-"),
-            ));
-
-            if let Some(etymology) = &entry.etymology {
-                lines.push(format!("etymology={etymology}"));
-            }
-            if !entry.idioms.is_empty() {
-                lines.push(format!("idioms=[{}]", entry.idioms.join(" | ")));
-            }
-            for group in &entry.synonym_groups {
-                lines.push(format!(
-                    "synonyms sense={} items=[{}]",
-                    group.sense.as_deref().unwrap_or("-"),
-                    group.items.join(", ")
-                ));
-            }
-            for sense in &entry.senses {
-                lines.push(format!(
-                    "sense {} label={} definition={}",
-                    sense.id,
-                    sense.label.as_deref().unwrap_or("-"),
-                    sense.definition.as_deref().unwrap_or("-"),
-                ));
-                if !sense.examples.is_empty() {
-                    lines.push(format!(
-                        "examples {}=[{}]",
-                        sense.id,
-                        sense.examples.join(" | ")
-                    ));
-                }
-            }
-        }
-
-        lines.join("\n")
     }
 }

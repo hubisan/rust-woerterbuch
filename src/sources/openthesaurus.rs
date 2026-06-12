@@ -92,70 +92,44 @@ mod tests {
     }
 
     #[test]
-    fn matches_expected_snapshots_for_local_fixtures() {
+    fn matches_expected_json_for_local_fixtures() {
         let cases = [
             SnapshotCase {
                 word: "Bank",
-                fixture: include_str!(
-                    "../../emacs-lisp/tests/files/openthesaurus/Bank/openthesaurus-Bank.json"
-                ),
-                expected: include_str!(
-                    "../../tests/snapshots/openthesaurus/Bank.snap"
-                ),
+                fixture: include_str!("../../tests/fixtures/openthesaurus/Bank/page.json"),
+                expected: include_str!("../../tests/expected/openthesaurus/Bank.json"),
             },
             SnapshotCase {
                 word: "Haus",
-                fixture: include_str!(
-                    "../../emacs-lisp/tests/files/openthesaurus/Haus/openthesaurus-Haus.json"
-                ),
-                expected: include_str!(
-                    "../../tests/snapshots/openthesaurus/Haus.snap"
-                ),
+                fixture: include_str!("../../tests/fixtures/openthesaurus/Haus/page.json"),
+                expected: include_str!("../../tests/expected/openthesaurus/Haus.json"),
             },
             SnapshotCase {
                 word: "Nixdaexistiert",
                 fixture: include_str!(
-                    "../../emacs-lisp/tests/files/openthesaurus/Nixdaexistiert/openthesaurus-Nixdaexistiert.json"
+                    "../../tests/fixtures/openthesaurus/Nixdaexistiert/page.json"
                 ),
-                expected: include_str!(
-                    "../../tests/snapshots/openthesaurus/Nixdaexistiert.snap"
-                ),
+                expected: include_str!("../../tests/expected/openthesaurus/Nixdaexistiert.json"),
             },
             SnapshotCase {
                 word: "Wolke",
-                fixture: include_str!(
-                    "../../emacs-lisp/tests/files/openthesaurus/Wolke/openthesaurus-Wolke.json"
-                ),
-                expected: include_str!(
-                    "../../tests/snapshots/openthesaurus/Wolke.snap"
-                ),
+                fixture: include_str!("../../tests/fixtures/openthesaurus/Wolke/page.json"),
+                expected: include_str!("../../tests/expected/openthesaurus/Wolke.json"),
             },
             SnapshotCase {
                 word: "Zaun",
-                fixture: include_str!(
-                    "../../emacs-lisp/tests/files/openthesaurus/Zaun/openthesaurus-Zaun.json"
-                ),
-                expected: include_str!(
-                    "../../tests/snapshots/openthesaurus/Zaun.snap"
-                ),
+                fixture: include_str!("../../tests/fixtures/openthesaurus/Zaun/page.json"),
+                expected: include_str!("../../tests/expected/openthesaurus/Zaun.json"),
             },
             SnapshotCase {
                 word: "springen",
-                fixture: include_str!(
-                    "../../emacs-lisp/tests/files/openthesaurus/springen/openthesaurus-springen.json"
-                ),
-                expected: include_str!(
-                    "../../tests/snapshots/openthesaurus/springen.snap"
-                ),
+                fixture: include_str!("../../tests/fixtures/openthesaurus/springen/page.json"),
+                expected: include_str!("../../tests/expected/openthesaurus/springen.json"),
             },
             SnapshotCase {
                 word: "verlieben",
-                fixture: include_str!(
-                    "../../emacs-lisp/tests/files/openthesaurus/verlieben/openthesaurus-verlieben.json"
-                ),
-                expected: include_str!(
-                    "../../tests/snapshots/openthesaurus/verlieben.snap"
-                ),
+                fixture: include_str!("../../tests/fixtures/openthesaurus/verlieben/page.json"),
+                expected: include_str!("../../tests/expected/openthesaurus/verlieben.json"),
             },
         ];
 
@@ -168,9 +142,9 @@ mod tests {
             .expect("fixture parses");
 
             assert_eq!(
-                render_snapshot(&response),
+                serde_json::to_string_pretty(&response).expect("response serializes"),
                 case.expected.trim_end(),
-                "snapshot mismatch for {}",
+                "expected JSON mismatch for {}",
                 case.word
             );
         }
@@ -181,7 +155,7 @@ mod tests {
         let response = parse(
             "Bank",
             "https://www.openthesaurus.de/synonyme/Bank",
-            include_str!("../../emacs-lisp/tests/files/openthesaurus/Bank/openthesaurus-Bank.json"),
+            include_str!("../../tests/fixtures/openthesaurus/Bank/page.json"),
         )
         .expect("fixture parses");
 
@@ -220,9 +194,7 @@ mod tests {
         let response = parse(
             "Wolke",
             "https://www.openthesaurus.de/synonyme/Wolke",
-            include_str!(
-                "../../emacs-lisp/tests/files/openthesaurus/Wolke/openthesaurus-Wolke.json"
-            ),
+            include_str!("../../tests/fixtures/openthesaurus/Wolke/page.json"),
         )
         .expect("fixture parses");
 
@@ -245,49 +217,12 @@ mod tests {
         let response = parse(
             "Nixdaexistiert",
             "https://www.openthesaurus.de/synonyme/Nixdaexistiert",
-            include_str!(
-                "../../emacs-lisp/tests/files/openthesaurus/Nixdaexistiert/openthesaurus-Nixdaexistiert.json"
-            ),
+            include_str!("../../tests/fixtures/openthesaurus/Nixdaexistiert/page.json"),
         )
         .expect("fixture parses");
 
         assert!(!response.ok);
         assert_eq!(response.error.as_deref(), Some("No matches found"));
         assert!(response.entries.is_empty());
-    }
-
-    fn render_snapshot(response: &SourceResult) -> String {
-        let mut lines = vec![
-            format!("source={:?}", response.source),
-            format!("ok={}", response.ok),
-            format!(
-                "url={}",
-                match response.url.as_ref() {
-                    Some(UrlValue::One(url)) => url.as_str(),
-                    Some(UrlValue::Many(urls)) => {
-                        panic!("unexpected multi-url snapshot: {urls:?}")
-                    }
-                    None => "-",
-                }
-            ),
-        ];
-
-        if let Some(error) = &response.error {
-            lines.push(format!("error={error}"));
-        }
-
-        for entry in &response.entries {
-            lines.push(format!("entry {} headword={}", entry.id, entry.headword));
-            for (index, group) in entry.synonym_groups.iter().enumerate() {
-                lines.push(format!(
-                    "group {} categories=[{}] items=[{}]",
-                    index + 1,
-                    group.categories.join(", "),
-                    group.items.join(", ")
-                ));
-            }
-        }
-
-        lines.join("\n")
     }
 }

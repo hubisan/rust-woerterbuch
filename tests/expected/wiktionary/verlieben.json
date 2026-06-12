@@ -1,0 +1,39 @@
+{
+  "source": "wiktionary",
+  "ok": true,
+  "url": "https://de.wiktionary.org/wiki/verlieben",
+  "entries": [
+    {
+      "id": 1,
+      "headword": "verlieben",
+      "title": "verlieben, Verb",
+      "part_of_speech": "Verb",
+      "grammar": "Verb",
+      "etymology": "Ableitung zu lieben mit dem Derivatem (Ableitungsmorphem) ver-",
+      "synonym_groups": [
+        {
+          "sense": "1",
+          "items": [
+            "vergucken",
+            "verknallen",
+            "verschießen"
+          ]
+        }
+      ],
+      "url": "https://de.wiktionary.org/wiki/verlieben",
+      "senses": [
+        {
+          "id": 1,
+          "label": "1",
+          "definition": "reflexiv: Personen: anfangen, für jemanden Liebe zu empfinden; auch übertragen: etwas reizend, nett, schön finden",
+          "examples": [
+            "Er hat sich Hals über Kopf in sie verliebt.",
+            "Ich bin in dich verliebt.",
+            "„Ein paar Monate später, [des Gynäkologen Michael] Spandaus erste Ehe war kaputt, rief er sie an. Sie verliebten sich, 21 Jahre ist das her.“",
+            "Ich habe mich in die Toskana verliebt, ich bin jedes Jahr mindestens einmal da."
+          ]
+        }
+      ]
+    }
+  ]
+}

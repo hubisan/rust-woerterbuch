@@ -1,0 +1,36 @@
+{
+  "source": "openthesaurus",
+  "ok": true,
+  "url": "https://www.openthesaurus.de/synonyme/Bank",
+  "entries": [
+    {
+      "id": 1,
+      "headword": "Bank",
+      "synonym_groups": [
+        {
+          "items": [
+            "Parkbank",
+            "Sitzbank"
+          ]
+        },
+        {
+          "categories": [
+            "Ökonomie"
+          ],
+          "items": [
+            "Bankhaus",
+            "Finanzinstitut",
+            "Finanzinstitution",
+            "Geldhaus",
+            "Geldinstitut",
+            "Geschäftsbank",
+            "Kreditanstalt",
+            "Kreditinstitut",
+            "Sparkasse"
+          ]
+        }
+      ],
+      "url": "https://www.openthesaurus.de/synonyme/Bank"
+    }
+  ]
+}

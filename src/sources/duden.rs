@@ -133,7 +133,12 @@ async fn fetch_response(client: &Client, url: &str) -> Result<(StatusCode, Strin
     Ok((status, body))
 }
 
-fn parse_entry(query: &str, url: &str, html: &str, id: usize) -> Option<DictionaryEntry> {
+pub fn parse_entry_for_fixture(
+    query: &str,
+    url: &str,
+    html: &str,
+    id: usize,
+) -> Option<DictionaryEntry> {
     let document = Html::parse_document(html);
     let title_node = extract_title_node(&document);
     let lemma = extract_lemma(title_node.as_ref(), query);
@@ -156,6 +161,10 @@ fn parse_entry(query: &str, url: &str, html: &str, id: usize) -> Option<Dictiona
     entry.senses = senses;
 
     (!entry.is_empty()).then_some(entry)
+}
+
+fn parse_entry(query: &str, url: &str, html: &str, id: usize) -> Option<DictionaryEntry> {
+    parse_entry_for_fixture(query, url, html, id)
 }
 
 fn parse_definitions(document: &Html) -> Vec<Sense> {
@@ -250,7 +259,7 @@ fn extract_definition_node(node: &ElementRef<'_>, id: usize, label: String) -> S
     sense
 }
 
-fn parse_search_results(document: &Html, lemma: &str) -> Vec<String> {
+pub fn parse_search_results_for_fixture(document: &Html, lemma: &str) -> Vec<String> {
     let Some(segment) = find_search_segment(document) else {
         return Vec::new();
     };
@@ -276,6 +285,10 @@ fn parse_search_results(document: &Html, lemma: &str) -> Vec<String> {
     }
 
     urls
+}
+
+fn parse_search_results(document: &Html, lemma: &str) -> Vec<String> {
+    parse_search_results_for_fixture(document, lemma)
 }
 
 fn find_search_segment(document: &Html) -> Option<ElementRef<'_>> {
@@ -632,8 +645,12 @@ fn one_or_many_urls(urls: Vec<String>) -> UrlValue {
     }
 }
 
-fn no_match_result() -> SourceResult {
+pub fn no_match_result_for_fixture() -> SourceResult {
     SourceResult::error(Source::Duden, "No matches found")
+}
+
+fn no_match_result() -> SourceResult {
+    no_match_result_for_fixture()
 }
 
 fn http_error(status: StatusCode, body: &str) -> anyhow::Error {
@@ -657,74 +674,70 @@ mod tests {
     }
 
     #[test]
-    fn matches_expected_snapshots_for_local_fixtures() {
+    fn matches_expected_json_for_local_fixtures() {
         let cases = [
             SnapshotCase {
                 word: "Bank",
                 response: parse_bank_fixture(),
-                expected: include_str!("../../tests/snapshots/duden/Bank.snap"),
+                expected: include_str!("../../tests/expected/duden/Bank.json"),
             },
             SnapshotCase {
                 word: "Haus",
                 response: parse_single_fixture(
                     "Haus",
                     &build_url("Haus"),
-                    include_str!("../../../woerterbuch/tests/files/duden/Haus/duden-Haus.html"),
+                    include_str!("../../tests/fixtures/duden/Haus/entry.html"),
                 ),
-                expected: include_str!("../../tests/snapshots/duden/Haus.snap"),
+                expected: include_str!("../../tests/expected/duden/Haus.json"),
             },
             SnapshotCase {
                 word: "verlieben",
                 response: parse_single_fixture(
                     "verlieben",
                     &build_url("verlieben"),
-                    include_str!(
-                        "../../../woerterbuch/tests/files/duden/verlieben/duden-verlieben.html"
-                    ),
+                    include_str!("../../tests/fixtures/duden/verlieben/entry.html"),
                 ),
-                expected: include_str!("../../tests/snapshots/duden/verlieben.snap"),
+                expected: include_str!("../../tests/expected/duden/verlieben.json"),
             },
             SnapshotCase {
                 word: "springen",
                 response: parse_single_fixture(
                     "springen",
                     &build_url("springen"),
-                    include_str!(
-                        "../../../woerterbuch/tests/files/duden/springen/duden-springen.html"
-                    ),
+                    include_str!("../../tests/fixtures/duden/springen/entry.html"),
                 ),
-                expected: include_str!("../../tests/snapshots/duden/springen.snap"),
+                expected: include_str!("../../tests/expected/duden/springen.json"),
             },
             SnapshotCase {
                 word: "Wolke",
                 response: parse_single_fixture(
                     "Wolke",
                     &build_url("Wolke"),
-                    include_str!("../../../woerterbuch/tests/files/duden/Wolke/duden-Wolke.html"),
+                    include_str!("../../tests/fixtures/duden/Wolke/entry.html"),
                 ),
-                expected: include_str!("../../tests/snapshots/duden/Wolke.snap"),
+                expected: include_str!("../../tests/expected/duden/Wolke.json"),
             },
             SnapshotCase {
                 word: "Zaun",
                 response: parse_single_fixture(
                     "Zaun",
                     &build_url("Zaun"),
-                    include_str!("../../../woerterbuch/tests/files/duden/Zaun/duden-Zaun.html"),
+                    include_str!("../../tests/fixtures/duden/Zaun/entry.html"),
                 ),
-                expected: include_str!("../../tests/snapshots/duden/Zaun.snap"),
+                expected: include_str!("../../tests/expected/duden/Zaun.json"),
             },
             SnapshotCase {
                 word: "Nixdaexistiert",
                 response: no_match_result(),
-                expected: include_str!("../../tests/snapshots/duden/Nixdaexistiert.snap"),
+                expected: include_str!("../../tests/expected/duden/Nixdaexistiert.json"),
             },
         ];
 
         for case in cases {
             assert_eq!(
-                render_snapshot(&case.response),
+                serde_json::to_string_pretty(&case.response).expect("response serializes"),
                 case.expected.trim_end(),
-                "snapshot mismatch for {}",
+                "expected JSON mismatch for {}",
                 case.word
             );
         }
@@ -733,9 +746,7 @@ mod tests {
     #[test]
     fn search_results_only_keep_exact_duden_homographs() {
         let urls = parse_search_results(
-            &Html::parse_document(include_str!(
-                "../../../woerterbuch/tests/files/duden/Bank/duden-Bank-search.html"
-            )),
+            &Html::parse_document(include_str!("../../tests/fixtures/duden/Bank/search.html")),
             "Bank",
         );
 
@@ -785,15 +796,13 @@ mod tests {
 
     fn parse_bank_fixture() -> SourceResult {
         let urls = parse_search_results(
-            &Html::parse_document(include_str!(
-                "../../../woerterbuch/tests/files/duden/Bank/duden-Bank-search.html"
-            )),
+            &Html::parse_document(include_str!("../../tests/fixtures/duden/Bank/search.html")),
             "Bank",
         );
 
         let pages = [
-            include_str!("../../../woerterbuch/tests/files/duden/Bank/duden-Bank-1.html"),
-            include_str!("../../../woerterbuch/tests/files/duden/Bank/duden-Bank-2.html"),
+            include_str!("../../tests/fixtures/duden/Bank/entry-1.html"),
+            include_str!("../../tests/fixtures/duden/Bank/entry-2.html"),
         ];
 
         let entries = pages
@@ -812,86 +821,5 @@ mod tests {
             Some(UrlValue::One(url.to_owned())),
             vec![entry],
         )
-    }
-
-    fn render_snapshot(response: &SourceResult) -> String {
-        let mut lines = vec![
-            format!("source={:?}", response.source),
-            format!("ok={}", response.ok),
-            format!("url={}", render_url(response.url.as_ref())),
-        ];
-
-        if let Some(error) = &response.error {
-            lines.push(format!("error={error}"));
-        }
-
-        for entry in &response.entries {
-            lines.push(format!(
-                "entry {} headword={} title={} part_of_speech={} grammar={} url={}",
-                entry.id,
-                entry.headword,
-                entry.title.as_deref().unwrap_or("-"),
-                entry.part_of_speech.as_deref().unwrap_or("-"),
-                entry.grammar.as_deref().unwrap_or("-"),
-                entry.url.as_deref().unwrap_or("-"),
-            ));
-
-            if let Some(etymology) = &entry.etymology {
-                lines.push(format!("etymology={etymology}"));
-            }
-
-            for group in &entry.synonym_groups {
-                lines.push(format!(
-                    "synonyms sense={} items=[{}]",
-                    group.sense.as_deref().unwrap_or("-"),
-                    group.items.join(" | ")
-                ));
-            }
-
-            for sense in &entry.senses {
-                render_sense(&mut lines, sense, 0);
-            }
-        }
-
-        lines.join("\n")
-    }
-
-    fn render_sense(lines: &mut Vec<String>, sense: &Sense, depth: usize) {
-        let prefix = "  ".repeat(depth);
-        lines.push(format!(
-            "{prefix}sense {} source_id={} label={} definition={}",
-            sense.id,
-            sense.source_id.as_deref().unwrap_or("-"),
-            sense.label.as_deref().unwrap_or("-"),
-            sense.definition.as_deref().unwrap_or("-"),
-        ));
-
-        if !sense.qualifiers.is_empty() {
-            lines.push(format!(
-                "{prefix}qualifiers=[{}]",
-                sense.qualifiers.join(" | ")
-            ));
-        }
-        if !sense.examples.is_empty() {
-            lines.push(format!("{prefix}examples=[{}]", sense.examples.join(" | ")));
-        }
-        if !sense.idioms.is_empty() {
-            lines.push(format!("{prefix}idioms=[{}]", sense.idioms.join(" | ")));
-        }
-        if let Some(image_url) = &sense.image_url {
-            lines.push(format!("{prefix}image={image_url}"));
-        }
-
-        for subsense in &sense.subsenses {
-            render_sense(lines, subsense, depth + 1);
-        }
-    }
-
-    fn render_url(url: Option<&UrlValue>) -> String {
-        match url {
-            Some(UrlValue::One(url)) => url.to_owned(),
-            Some(UrlValue::Many(urls)) => urls.join(" | "),
-            None => "-".to_owned(),
-        }
     }
 }

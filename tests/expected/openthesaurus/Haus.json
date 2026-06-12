@@ -1,0 +1,106 @@
+{
+  "source": "openthesaurus",
+  "ok": true,
+  "url": "https://www.openthesaurus.de/synonyme/Haus",
+  "entries": [
+    {
+      "id": 1,
+      "headword": "Haus",
+      "synonym_groups": [
+        {
+          "items": [
+            "Haus...",
+            "hausintern",
+            "inhäusig",
+            "inhouse",
+            "innerbetrieblich",
+            "intern",
+            "firmenintern"
+          ]
+        },
+        {
+          "items": [
+            "Heim",
+            "Behausung",
+            "Bude",
+            "Hütte"
+          ]
+        },
+        {
+          "items": [
+            "Familie",
+            "Familienbande",
+            "Geblüt",
+            "Geschlecht",
+            "Sippe",
+            "Stamm",
+            "Mischpoke"
+          ]
+        },
+        {
+          "items": [
+            "Bungalow",
+            "(eingeschossiges) Haus"
+          ]
+        },
+        {
+          "items": [
+            "Betriebs...",
+            "betriebseigen",
+            "betriebsintern",
+            "firmenintern",
+            "Haus...",
+            "hauseigen",
+            "vor Ort"
+          ]
+        },
+        {
+          "items": [
+            "bewährt",
+            "(jemandes) Haus...",
+            "langjährig",
+            "... meines Vertrauens",
+            "(jemandes) Haus- und Hof-...",
+            "(jemandes) Leib-und-Magen-..."
+          ]
+        },
+        {
+          "items": [
+            "Geschäft",
+            "Laden (...laden)",
+            "Handel (für ..., ...handel)",
+            "Handlung (...handlung)",
+            "...haus",
+            "Kauf(manns)laden",
+            "Ladengeschäft",
+            "...markt",
+            "Shop (...shop)",
+            "Store",
+            "Detailgeschäft",
+            "Einzelhandelsgeschäft"
+          ]
+        },
+        {
+          "items": [
+            "Anwesen",
+            "Domaine",
+            "Finca (span., südamer.)",
+            "Herrenhaus",
+            "Landgut",
+            "Landhaus",
+            "Landsitz",
+            "Manor",
+            "Villa"
+          ]
+        },
+        {
+          "items": [
+            "Ministerium",
+            "(das) Haus (+ Ministername)"
+          ]
+        }
+      ],
+      "url": "https://www.openthesaurus.de/synonyme/Haus"
+    }
+  ]
+}

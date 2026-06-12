@@ -1,0 +1,69 @@
+{
+  "source": "wiktionary",
+  "ok": true,
+  "url": "https://de.wiktionary.org/wiki/Zaun",
+  "entries": [
+    {
+      "id": 1,
+      "headword": "Zaun",
+      "title": "Zaun, Substantiv, m",
+      "part_of_speech": "Substantiv",
+      "grammar": "Substantiv, m",
+      "etymology": "Bei dem Wort handelt es sich um ein seit dem 8. Jahrhundert bezeugtes Erbwort, dessen mittelhochdeutsche Formen zūn und zoun ‚Umzäunung, Hecke, Gehege‘ (vergleiche mittelniederdeutsch tūn ‚Flechtzaun, Gehege, Garten‘, mittelniederländisch tuun ‚Flechtzaun, umzäunter Hof‘) lauteten. Diese entstammen der gleichbedeutend althochdeutschen Form zūn → goh, welche ihrerseits auf die (nicht bezeugte, aber rekonstruierte) germanische Form *tūna- m ‚Zaun‘ zurückgeführt wird. Der gleichen Quelle sollen altnordisch tūn n ‚eingezäuntes Land, eingehegter Grasplatz vor dem Haus, Hof, Hofplatz, Ortschaft, Stadt‘, altfriesisch tūn → ofs, altsächsisch tūn ‚Flechtzaun, Gehege, Garten‘ und altenglisch tūn ‚Zaun; Garten; Feld; Hof; Landhaus; Wohnung; Dorf, Stadt, Ortschaft‘ entspringen. So wird deutlich, dass sich im Altnordischen und Altenglischen die Bedeutung zu ‚eingehegter Platz‘ weiter entwickelt, so dass sich englisch town ‚Stadt‘, niederländisch tuin ‚Garten‘, (mundartliches) schwedisch tun ‚Zaun‘ und isländisch tún ergeben. Die Herkunft der erschlossenen germanischen Form bleibt jedoch letztlich unklar. Außergermanische Anknüpfungsmöglichkeiten finden sich im Keltischen: altirisch dūn oder dún n ‚Burg, befestigte Stadt‘, altwalisisch din ‚Burg‘. Vermutlich gehört hierhin auch das gallisch - lateinische Element -dūnum oder -dunum, das als zweites Glied in Ortsnamen auftritt, wie zum Beispiel in Lugdūnum ‚Lyon‘, Noviodunum ‚Neuenburg‘ (Name mehrerer keltischer Städte), Tarodūnum ‚Zarten‘, Virodūnum ‚Verdun‘.",
+      "idioms": [
+        "ein lebender Zaun",
+        "mit etwas hinter dem Zaun halten; mit etwas hinterm Zaun halten",
+        "etwas vom Zaun brechen; etwas vom Zaune brechen",
+        "den Zaun nicht einreißen",
+        "durch den Zaun grasen",
+        "für jemanden einen Zaun flicken",
+        "Hier möchte ich nicht tot überm Zaun hängen",
+        "jemandem den Zaun pinseln",
+        "jemanden über den Zaun schippen",
+        "nicht alle Latten am Zaun haben; nicht mehr alle Latten am Zaun haben",
+        "übern Zaun gehen",
+        "Wind über den Zaun schaufeln",
+        "Wir werden den Zaun schon pinseln"
+      ],
+      "synonym_groups": [
+        {
+          "sense": "1",
+          "items": [
+            "Abzäunung",
+            "Einfriedigung",
+            "Einfriedung",
+            "Einzäunung",
+            "Umzäunung",
+            "Befriedung",
+            "Umfriedigung",
+            "Umfriedung",
+            "Einhegung",
+            "Hag",
+            "Fence",
+            "Fenz",
+            "Eingrenzung",
+            "Gatter",
+            "Gitter",
+            "Hecke",
+            "Palisade"
+          ]
+        }
+      ],
+      "url": "https://de.wiktionary.org/wiki/Zaun",
+      "senses": [
+        {
+          "id": 1,
+          "label": "1",
+          "definition": "eine aus Drahtgeflecht oder aus (gekreuzten, parallel angeordneten oder dergleichen) Metall- oder Holzstäben bestehende Vorrichtung, die zumeist ein Grundstück, ein bestimmtes Areal oder dergleichen eingrenzt",
+          "examples": [
+            "Viele Menschen frieden ihr Grundstück mit einem Zaun ein.",
+            "„Es blieb nicht aus, daß wir dann vor dem Zaun standen.“",
+            "„Und die Kosaken sahen sich erstaunt nach Denissow um, als er sich mit einigen nach Hundegebell klingenden Lauten rasch abwandte, an den Zaun ging und sich gegen ihn lehnte.“",
+            "„Eines Tages überraschte ihn der Vater, wie er mit der mühsam festgehaltenen Büchse, auf den Fußspitzen stehend, durch eine Schießscharte des Zaunes nach einem unfern aufgeblockten Hühnergeier zielte.“",
+            "„Über einen Gartenzaun grünten Fliederbüsche, und nicht eine Latte des Zaunes war zerbrochen.“"
+          ]
+        }
+      ]
+    }
+  ]
+}

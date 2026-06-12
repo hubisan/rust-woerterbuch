@@ -596,50 +596,42 @@ mod tests {
     }
 
     #[test]
-    fn matches_expected_snapshots_for_local_fixtures() {
+    fn matches_expected_json_for_local_fixtures() {
         let cases = [
             SnapshotCase {
                 word: "Bank",
-                fixture: include_str!("../../../woerterbuch/tests/files/dwds/Bank/dwds-Bank.html"),
-                expected: include_str!("../../tests/snapshots/dwds/Bank.snap"),
+                fixture: include_str!("../../tests/fixtures/dwds/Bank/page.html"),
+                expected: include_str!("../../tests/expected/dwds/Bank.json"),
             },
             SnapshotCase {
                 word: "Haus",
-                fixture: include_str!("../../../woerterbuch/tests/files/dwds/Haus/dwds-Haus.html"),
-                expected: include_str!("../../tests/snapshots/dwds/Haus.snap"),
+                fixture: include_str!("../../tests/fixtures/dwds/Haus/page.html"),
+                expected: include_str!("../../tests/expected/dwds/Haus.json"),
             },
             SnapshotCase {
                 word: "springen",
-                fixture: include_str!(
-                    "../../../woerterbuch/tests/files/dwds/springen/dwds-springen.html"
-                ),
-                expected: include_str!("../../tests/snapshots/dwds/springen.snap"),
+                fixture: include_str!("../../tests/fixtures/dwds/springen/page.html"),
+                expected: include_str!("../../tests/expected/dwds/springen.json"),
             },
             SnapshotCase {
                 word: "verlieben",
-                fixture: include_str!(
-                    "../../../woerterbuch/tests/files/dwds/verlieben/dwds-verlieben.html"
-                ),
-                expected: include_str!("../../tests/snapshots/dwds/verlieben.snap"),
+                fixture: include_str!("../../tests/fixtures/dwds/verlieben/page.html"),
+                expected: include_str!("../../tests/expected/dwds/verlieben.json"),
             },
             SnapshotCase {
                 word: "Wolke",
-                fixture: include_str!(
-                    "../../../woerterbuch/tests/files/dwds/Wolke/dwds-Wolke.html"
-                ),
-                expected: include_str!("../../tests/snapshots/dwds/Wolke.snap"),
+                fixture: include_str!("../../tests/fixtures/dwds/Wolke/page.html"),
+                expected: include_str!("../../tests/expected/dwds/Wolke.json"),
             },
             SnapshotCase {
                 word: "Zaun",
-                fixture: include_str!("../../../woerterbuch/tests/files/dwds/Zaun/dwds-Zaun.html"),
-                expected: include_str!("../../tests/snapshots/dwds/Zaun.snap"),
+                fixture: include_str!("../../tests/fixtures/dwds/Zaun/page.html"),
+                expected: include_str!("../../tests/expected/dwds/Zaun.json"),
             },
             SnapshotCase {
                 word: "Nixdaexistiert",
-                fixture: include_str!(
-                    "../../../woerterbuch/tests/files/dwds/Nixdaexistiert/dwds-Nixdaexistiert.html"
-                ),
-                expected: include_str!("../../tests/snapshots/dwds/Nixdaexistiert.snap"),
+                fixture: include_str!("../../tests/fixtures/dwds/Nixdaexistiert/page.html"),
+                expected: include_str!("../../tests/expected/dwds/Nixdaexistiert.json"),
             },
         ];
 
@@ -651,9 +643,9 @@ mod tests {
             )
             .expect("fixture parses");
             assert_eq!(
-                render_snapshot(&response),
+                serde_json::to_string_pretty(&response).expect("response serializes"),
                 case.expected.trim_end(),
-                "snapshot mismatch for {}",
+                "expected JSON mismatch for {}",
                 case.word
             );
         }
@@ -664,7 +656,7 @@ mod tests {
         let response = parse(
             "Bank",
             "https://www.dwds.de/wb/Bank",
-            include_str!("../../../woerterbuch/tests/files/dwds/Bank/dwds-Bank.html"),
+            include_str!("../../tests/fixtures/dwds/Bank/page.html"),
         )
         .expect("fixture parses");
 
@@ -681,81 +673,12 @@ mod tests {
         let response = parse(
             "Nixdaexistiert",
             "https://www.dwds.de/wb/Nixdaexistiert",
-            include_str!(
-                "../../../woerterbuch/tests/files/dwds/Nixdaexistiert/dwds-Nixdaexistiert.html"
-            ),
+            include_str!("../../tests/fixtures/dwds/Nixdaexistiert/page.html"),
         )
         .expect("fixture parses");
 
         assert!(!response.ok);
         assert_eq!(response.error.as_deref(), Some("No matches found"));
         assert!(response.entries.is_empty());
-    }
-
-    fn render_snapshot(response: &SourceResult) -> String {
-        let rendered_url = match response.url.as_ref() {
-            Some(UrlValue::One(url)) => url.to_owned(),
-            Some(UrlValue::Many(urls)) => urls.join(" | "),
-            None => "-".to_owned(),
-        };
-
-        let mut lines = vec![
-            format!("source={:?}", response.source),
-            format!("ok={}", response.ok),
-            format!("url={rendered_url}"),
-        ];
-
-        if let Some(error) = &response.error {
-            lines.push(format!("error={error}"));
-        }
-
-        for entry in &response.entries {
-            lines.push(format!(
-                "entry {} homograph={} headword={} title={} part_of_speech={} grammar={}",
-                entry.id,
-                entry.homograph.as_deref().unwrap_or("-"),
-                entry.headword,
-                entry.title.as_deref().unwrap_or("-"),
-                entry.part_of_speech.as_deref().unwrap_or("-"),
-                entry.grammar.as_deref().unwrap_or("-"),
-            ));
-
-            if let Some(etymology) = &entry.etymology {
-                lines.push(format!("etymology={etymology}"));
-            }
-            if !entry.idioms.is_empty() {
-                lines.push(format!("idioms=[{}]", entry.idioms.join(" | ")));
-            }
-            for sense in &entry.senses {
-                render_sense(&mut lines, sense, 0);
-            }
-        }
-
-        lines.join("\n")
-    }
-
-    fn render_sense(lines: &mut Vec<String>, sense: &Sense, depth: usize) {
-        let prefix = "  ".repeat(depth);
-        lines.push(format!(
-            "{prefix}sense {} source_id={} label={} definition={}",
-            sense.id,
-            sense.source_id.as_deref().unwrap_or("-"),
-            sense.label.as_deref().unwrap_or("-"),
-            sense.definition.as_deref().unwrap_or("-"),
-        ));
-
-        if !sense.qualifiers.is_empty() {
-            lines.push(format!(
-                "{prefix}qualifiers=[{}]",
-                sense.qualifiers.join(" | ")
-            ));
-        }
-        if !sense.examples.is_empty() {
-            lines.push(format!("{prefix}examples=[{}]", sense.examples.join(" | ")));
-        }
-
-        for subsense in &sense.subsenses {
-            render_sense(lines, subsense, depth + 1);
-        }
     }
 }

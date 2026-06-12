@@ -1,0 +1,51 @@
+{
+  "source": "wiktionary",
+  "ok": true,
+  "url": "https://de.wiktionary.org/wiki/Wolke",
+  "entries": [
+    {
+      "id": 1,
+      "headword": "Wolke",
+      "title": "Wolke, Substantiv, f",
+      "part_of_speech": "Substantiv",
+      "grammar": "Substantiv, f",
+      "etymology": "mittelhochdeutsch wolken → gmh, althochdeutsch wolkan → goh, germanisch * wulkna- → gem, belegt seit dem 8. Jahrhundert. Das Wort geht möglicherweise auf die indogermanische Wurzel * u̯elg- „ feucht, nass “ zurück. Ursprünglich ist es ein Neutrum, erst seit dem Spätmittelhochdeutschen ist „die Wolke“ weiblich.",
+      "idioms": [
+        "auf Wolke sieben schweben",
+        "aus allen Wolken fallen"
+      ],
+      "synonym_groups": [
+        {
+          "sense": "3",
+          "items": [
+            "Gaswolke"
+          ]
+        }
+      ],
+      "url": "https://de.wiktionary.org/wiki/Wolke",
+      "senses": [
+        {
+          "id": 1,
+          "label": "1",
+          "definition": "große Ansammlung von Wasserteilchen in der Troposphäre",
+          "examples": [
+            "Der Himmel ist mit Wolken bedeckt.",
+            "„In welcher Hinsicht, auf welche Weise können die Wolken und Gletscher der Hochgebirge Schicksal spielen?“",
+            "„Gelbliche Wolken fliegen über den Morgenhimmel.“",
+            "„Es fing bereits an, hell zu werden, die Wolken hatten sich zerteilt, und es regnete nicht mehr.“"
+          ]
+        },
+        {
+          "id": 2,
+          "label": "2",
+          "definition": "Ansammlung vieler, gleicher Teilchen in der Luft oder in einer Flüssigkeit"
+        },
+        {
+          "id": 3,
+          "label": "3",
+          "definition": "Astronomie: Gebilde aus Gas oder Staub"
+        }
+      ]
+    }
+  ]
+}

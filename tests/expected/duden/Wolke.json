@@ -1,0 +1,80 @@
+{
+  "source": "duden",
+  "ok": true,
+  "url": "https://www.duden.de/rechtschreibung/Wolke?amp",
+  "entries": [
+    {
+      "id": 1,
+      "headword": "Wol­ke",
+      "title": "Wol­ke, die",
+      "part_of_speech": "Substantiv",
+      "grammar": "Substantiv, feminin",
+      "etymology": "mittelhochdeutsch wolke, althochdeutsch wolka, eigentlich = die Feuchte (d. h. „die Regenhaltige“)",
+      "synonym_groups": [
+        {
+          "items": [
+            "Schwaden",
+            "Schwall"
+          ]
+        }
+      ],
+      "url": "https://www.duden.de/rechtschreibung/Wolke?amp",
+      "senses": [
+        {
+          "id": 1,
+          "source_id": "Bedeutung-1",
+          "label": "1",
+          "definition": "sichtbar in der Erdatmosphäre schwebende Ansammlung, Verdichtung von Wassertröpfchen oder Eiskristallen (von verschiedenartiger Form und Farbe)",
+          "examples": [
+            "weiße, schwarze, tief hängende, dicke Wolken",
+            "Wolken ziehen auf, türmen sich auf, regnen sich ab",
+            "die Sonne bricht durch die Wolken",
+            "der Gipfel ist in Wolken [gehüllt]",
+            "der Himmel war mit/von Wolken bedeckt",
+            "das Flugzeug fliegt über den Wolken",
+            "⟨in übertragener Bedeutung:⟩ dunkle Wolken ziehen am Horizont auf (gehoben; unheilvolle Ereignisse bahnen sich an)"
+          ],
+          "idioms": [
+            "auf Wolken/in den Wolken/über den Wolken schweben (gehoben: verträumt, realitätsfern, unrealistisch sein)",
+            "auf Wolke sieben schweben (umgangssprachlich: überglücklich, in Hochstimmung sein; wahrscheinlich Lehnübersetzung von englisch „be on cloud seven“)",
+            "aus allen Wolken fallen (umgangssprachlich: völlig überrascht sein; eigentlich = aus der Welt der Träume, der Fantasie auf den Boden der Realität gelangen)"
+          ],
+          "image_url": "https://cdn.duden.de/_media_/full/W/Wolke-201100281474.jpg"
+        },
+        {
+          "id": 2,
+          "source_id": "Bedeutung-2",
+          "label": "2",
+          "definition": "Menge von etwas, was – einer Wolke (1) ähnlich – in der Luft schwebt, sich quellend, wirbelnd o. ä. in der Luft oder in einer flüssigen Substanz ausbreitet",
+          "examples": [
+            "eine Wolke von Zigarrenrauch",
+            "eine Wolke von Mücken, Möwen",
+            "aus dem Schornstein stiegen schwarze Wolken (Rauchwolken)"
+          ],
+          "image_url": "https://cdn.duden.de/_media_/full/W/Wolke-201100281477.jpg"
+        },
+        {
+          "id": 3,
+          "source_id": "Bedeutung-3",
+          "label": "3",
+          "definition": "(in Bezug auf ein Kleidungsstück) bauschig drapierte Menge Stoff",
+          "qualifiers": [
+            "Gebrauch: scherzhaft"
+          ],
+          "examples": [
+            "sie trug eine Wolke von Tüll und Spitzen"
+          ]
+        },
+        {
+          "id": 4,
+          "source_id": "Bedeutung-4",
+          "label": "4",
+          "definition": "Ansammlung mikroskopisch kleiner Bläschen oder anderer Einschlüsse (in Edelsteinen)",
+          "qualifiers": [
+            "Gebrauch: Mineralogie"
+          ]
+        }
+      ]
+    }
+  ]
+}

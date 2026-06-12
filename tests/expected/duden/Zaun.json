@@ -1,0 +1,45 @@
+{
+  "source": "duden",
+  "ok": true,
+  "url": "https://www.duden.de/rechtschreibung/Zaun?amp",
+  "entries": [
+    {
+      "id": 1,
+      "headword": "Zaun",
+      "title": "Zaun, der",
+      "part_of_speech": "Substantiv",
+      "grammar": "Substantiv, maskulin",
+      "etymology": "mittelhochdeutsch, althochdeutsch zūn = Umzäunung, Hecke, Gehege",
+      "synonym_groups": [
+        {
+          "items": [
+            "Abzäunung",
+            "Einzäunung",
+            "Gatter",
+            "Gitter"
+          ]
+        }
+      ],
+      "url": "https://www.duden.de/rechtschreibung/Zaun?amp",
+      "senses": [
+        {
+          "id": 1,
+          "label": "1",
+          "definition": "Abgrenzung, Einfriedigung aus (parallel angeordneten, gekreuzten o. ä.) Metall- oder Holzstäben oder aus Drahtgeflecht",
+          "examples": [
+            "ein hoher, niedriger, elektrischer Zaun",
+            "ein Zaun aus Latten",
+            "einen Zaun ziehen, errichten, reparieren, erneuern, anstreichen",
+            "die Kinder schlüpften durch den Zaun, kletterten über den Zaun"
+          ],
+          "idioms": [
+            "ein lebender Zaun (eine Hecke b)",
+            "mit etwas [nicht] hinter dem/hinterm Zaun halten (etwas Wesentliches [nicht] verschweigen)",
+            "einen Streit/Zwist/Krieg o. Ä. vom Zaun brechen (heraufbeschwören, plötzlich damit beginnen; eigentlich = so unvermittelt mit einem Streit beginnen, wie man eine Latte [als Waffe] von der nächsten Umzäunung bricht)"
+          ],
+          "image_url": "https://cdn.duden.de/_media_/full/Z/Zaun-201100281681.jpg"
+        }
+      ]
+    }
+  ]
+}

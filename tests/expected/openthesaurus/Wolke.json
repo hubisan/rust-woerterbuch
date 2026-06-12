@@ -1,0 +1,27 @@
+{
+  "source": "openthesaurus",
+  "ok": true,
+  "url": "https://www.openthesaurus.de/synonyme/Wolke",
+  "entries": [
+    {
+      "id": 1,
+      "headword": "Wolke",
+      "synonym_groups": [
+        {
+          "items": []
+        },
+        {
+          "categories": [
+            "Computer"
+          ],
+          "items": [
+            "Cloud",
+            "Datenwolke",
+            "Rechnerwolke"
+          ]
+        }
+      ],
+      "url": "https://www.openthesaurus.de/synonyme/Wolke"
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "source": "wiktionary",
+  "ok": true,
+  "url": "https://de.wiktionary.org/wiki/springen",
+  "entries": [
+    {
+      "id": 1,
+      "headword": "springen",
+      "title": "springen, Verb, unregelmäßig",
+      "part_of_speech": "Verb",
+      "grammar": "Verb, unregelmäßig",
+      "etymology": "mittelhochdeutsch springen → gmh, althochdeutsch springan → goh, das ursprünglich aufspringen, hervorbrechen bedeutete; verwandt mit dem Spur zu Grunde liegenden Verb (»treten; zappeln, zucken«)",
+      "idioms": [
+        "vor Freude an die Decke springen",
+        "dem Tod von der Schippe springen",
+        "der springende Punkt",
+        "etwas springen lassen",
+        "in die Augen springen",
+        "in die Bresche springen",
+        "in Stücke springen"
+      ],
+      "synonym_groups": [
+        {
+          "sense": "1",
+          "items": [
+            "hopsen",
+            "hüpfen"
+          ]
+        },
+        {
+          "sense": "2",
+          "items": [
+            "hervorschießen"
+          ]
+        },
+        {
+          "sense": "4",
+          "items": [
+            "hervorschießen",
+            "herausspritzen",
+            "emporschießen",
+            "entspringen",
+            "hervorquellen"
+          ]
+        },
+        {
+          "sense": "5",
+          "items": [
+            "bersten",
+            "reißen",
+            "platzen"
+          ]
+        }
+      ],
+      "url": "https://de.wiktionary.org/wiki/springen",
+      "senses": [
+        {
+          "id": 1,
+          "label": "1",
+          "definition": "hochschnellen und sich ein kurzes Stück durch die Luft bewegen",
+          "examples": [
+            "Sie springt zwei Meter hoch.",
+            "„Ich […] sprang in das Motorboot und fuhr es auf die andere Seite des Stegs, um es dort festzumachen.“"
+          ]
+        },
+        {
+          "id": 2,
+          "label": "2",
+          "definition": "sich plötzlich ins Blickfeld bewegen",
+          "examples": [
+            "Plötzlich sprangen zwei Männer aus dem Gebüsch."
+          ]
+        },
+        {
+          "id": 3,
+          "label": "3",
+          "definition": "sich mehr oder weniger elegant fallen lassen",
+          "examples": [
+            "Er sprang kopfüber in die Fluten."
+          ]
+        },
+        {
+          "id": 4,
+          "label": "4",
+          "definition": "veraltet, über Wasser: herausspritzen, emporschießen",
+          "examples": [
+            "Die Fontäne springt dreißig Fuß empor."
+          ]
+        },
+        {
+          "id": 5,
+          "label": "5",
+          "definition": "von Glas, Eis, Stein und ähnlich Porösem: plötzlich Risse (Sprünge) bekommen",
+          "examples": [
+            "Die Scheibe ist zwar nicht zerbrochen, aber gesprungen."
+          ]
+        }
+      ]
+    }
+  ]
+}

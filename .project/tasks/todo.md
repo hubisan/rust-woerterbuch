@@ -40,6 +40,12 @@ Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiede
 
 # Abgeschlossen
 
+## DONE 2026-06-12 [Refresh source fixtures and expected JSON output](./archive/2026-06-12--refresh-source-fixtures-and-json-expected-output.md)
+
+  - Download and store repo-local source fixtures for the existing test words.
+  - Generate canonical expected JSON outputs from the current Rust implementation.
+  - Update parser tests to consume those local fixtures and expected JSON files.
+
 ## DONE [Fix remaining Clippy warnings](./archive/2026-06-12--fix-remaining-clippy-warnings.md)
 
   - Replace DWDS manual `iter().any(...)` check with `contains(...)`.
