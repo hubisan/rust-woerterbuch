@@ -16,17 +16,32 @@ Important files:
 
 Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiedenen Quellen — Duden, DWDS, Wiktionary und OpenThesaurus — via Scraping aggregiert, wird in ein performantes, asynchrones Rust-CLI-Tool umgewandelt.
 
-# NEXT Fix Duden Umlaute
+# NEXT Omit redundant single-entry headings
 
-Dies gibt aktuell kein Ergebnis:
-Gerüst: https://www.duden.de/rechtschreibung/Geruest
-verrückt: https://www.duden.de/rechtschreibung/verrueckt
+Improve text rendering by omitting `Entry 1` headings when a source has only one entry.
 
-Ich gehe davon aus, dass dies aufgrund des Umlautes nicht geht.
+Decision:
+- In human, markdown, and org output, render `Entry N` headings only when the current source has more than one entry.
+- If a source has exactly one entry, render its sections directly under the source heading.
+- This applies to both layouts:
+  - `--layout by-source`
+  - `--layout by-section`
+- JSON output remains unchanged.
+- The internal data model remains unchanged.
 
-DWDS hat Umlaute: https://www.dwds.de/wb/Ger%C3%BCst
-Wiktionary auch: https://de.wiktionary.org/wiki/Ger%C3%BCst
-Openthesaurus auch: https://www.openthesaurus.de/synonyme/Ger%C3%BCcht
+Examples:
+- For `Buch`, sources like DWDS, Duden, and Wiktionary each have only one entry, so do not render `Entry 1`.
+- For `Bank`, DWDS, Duden, and Wiktionary have multiple entries, so keep `Entry 1`, `Entry 2`, etc.
+
+Acceptance criteria:
+- `woerterbuch Buch --format markdown --layout by-source` does not contain redundant `### Entry 1` headings for single-entry sources.
+- `woerterbuch Buch --format markdown --layout by-section` does not contain redundant `### Entry 1` headings for single-entry sources.
+- `woerterbuch Bank --format markdown --layout by-source` still renders `Entry 1` and `Entry 2` where sources have multiple entries.
+- `woerterbuch Bank --format markdown --layout by-section` still renders `Entry 1` and `Entry 2` where sources have multiple entries.
+- `woerterbuch Buch --json` remains unchanged.
+- `cargo fmt --all --check` passes.
+- `cargo test` passes.
+- `cargo clippy --all-targets --all-features -- -D warnings` passes.
 
 # TODO Release checkpoint
 
@@ -42,6 +57,18 @@ Openthesaurus auch: https://www.openthesaurus.de/synonyme/Ger%C3%BCcht
 - Confirm README, CHANGELOG, CI, and basic Emacs usage are all in sync.
 
 # Abgeschlossen
+
+## DONE 2026-06-13 [Fix Duden Umlaute](./archive/2026-06-12--fix-duden-umlaute.md)
+
+Dies gibt aktuell kein Ergebnis:
+Gerüst: https://www.duden.de/rechtschreibung/Geruest
+verrückt: https://www.duden.de/rechtschreibung/verrueckt
+
+Ich gehe davon aus, dass dies aufgrund des Umlautes nicht geht.
+
+DWDS hat Umlaute: https://www.dwds.de/wb/Ger%C3%BCst
+Wiktionary auch: https://de.wiktionary.org/wiki/Ger%C3%BCst
+Openthesaurus auch: https://www.openthesaurus.de/synonyme/Ger%C3%BCcht
 
 ## DONE 2026-06-12 Additional output formats
 

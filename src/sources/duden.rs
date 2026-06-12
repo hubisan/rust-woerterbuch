@@ -79,7 +79,10 @@ async fn process_search_response(
 }
 
 pub fn build_url(lemma: &str) -> String {
-    let normalized = lemma.split_whitespace().collect::<Vec<_>>().join("_");
+    let normalized = duden_lookup_key(lemma)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join("_");
     format!(
         "{}{normalized}?amp",
         DUDEN_ENTRY_BASE,
@@ -279,7 +282,7 @@ pub fn parse_search_results_for_fixture(document: &Html, lemma: &str) -> Vec<Str
         }
 
         let visible = search_result_lemma(&label);
-        if clean_text(&visible) == clean_text(lemma) {
+        if normalized_search_lemma(&visible) == normalized_search_lemma(lemma) {
             urls.push(ensure_amp_url(&absolute_url(href)));
         }
     }
@@ -309,6 +312,29 @@ fn search_result_lemma(label: &ElementRef<'_>) -> String {
 
 fn extract_title_node(document: &Html) -> Option<ElementRef<'_>> {
     document.select(&selector("h1.lemma__title")).next()
+}
+
+fn duden_lookup_key(input: &str) -> String {
+    let mut out = String::new();
+
+    for ch in input.chars() {
+        match ch {
+            'ä' => out.push_str("ae"),
+            'ö' => out.push_str("oe"),
+            'ü' => out.push_str("ue"),
+            'ß' => out.push_str("ss"),
+            'Ä' => out.push_str("Ae"),
+            'Ö' => out.push_str("Oe"),
+            'Ü' => out.push_str("Ue"),
+            _ => out.push(ch),
+        }
+    }
+
+    out
+}
+
+fn normalized_search_lemma(input: &str) -> String {
+    clean_text(&duden_lookup_key(input)).to_lowercase()
 }
 
 fn extract_lemma(title_node: Option<&ElementRef<'_>>, fallback: &str) -> String {
@@ -756,6 +782,52 @@ mod tests {
                 "https://www.duden.de/rechtschreibung/Bank_Sitzgelegenheit?amp".to_owned(),
                 "https://www.duden.de/rechtschreibung/Bank_Geldinstitut?amp".to_owned(),
             ]
+        );
+    }
+
+    #[test]
+    fn build_url_uses_duden_umlaut_spellings() {
+        assert_eq!(
+            build_url("Gerüst"),
+            "https://www.duden.de/rechtschreibung/Geruest?amp"
+        );
+        assert_eq!(
+            build_url("verrückt"),
+            "https://www.duden.de/rechtschreibung/verrueckt?amp"
+        );
+        assert_eq!(
+            build_url("Straße"),
+            "https://www.duden.de/rechtschreibung/Strasse?amp"
+        );
+    }
+
+    #[test]
+    fn search_result_matching_treats_umlauts_and_expansions_as_equal() {
+        let html = Html::parse_document(
+            r#"
+            <div class="segment">
+              <h2 class="segment__title">Wörterbuch</h2>
+              <section class="vignette">
+                <a class="vignette__label" href="/rechtschreibung/Geruest">
+                  <strong>Gerüst</strong>
+                </a>
+              </section>
+              <section class="vignette">
+                <a class="vignette__label" href="/rechtschreibung/Gerueste">
+                  <strong>Gerüste</strong>
+                </a>
+              </section>
+            </div>
+            "#,
+        );
+
+        assert_eq!(
+            parse_search_results(&html, "Gerüst"),
+            vec!["https://www.duden.de/rechtschreibung/Geruest?amp".to_owned()]
+        );
+        assert_eq!(
+            parse_search_results(&html, "Geruest"),
+            vec!["https://www.duden.de/rechtschreibung/Geruest?amp".to_owned()]
         );
     }
 

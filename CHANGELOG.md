@@ -4,6 +4,7 @@ This file records completed changes.
 
 ## Unreleased
 
+- `FIXED`: Duden lookups now resolve words with umlauts and `ß` correctly by using the `ae/oe/ue/ss` URL spellings Duden expects.
 - `CHANGED`: Org output now uses `~label~`, JSON rejects `--layout`, and `--max-examples` limits rendered examples in text output.
 - `CHANGED`: Renamed output layouts to `by-source` and `by-section`, made `by-source` the default, and aligned text output spacing with the documented examples.
 - `CHANGED` Updated the README.
