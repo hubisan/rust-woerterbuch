@@ -16,10 +16,10 @@ pub enum OutputFormat {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum OutputLayout {
-    #[value(name = "sources-sections")]
-    SourcesSections,
-    #[value(name = "sections-sources")]
-    SectionsSources,
+    #[value(name = "by-source")]
+    BySource,
+    #[value(name = "by-section")]
+    BySection,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,18 +76,6 @@ struct SynonymItem {
     text: String,
 }
 
-pub fn print_human(response: &LookupResponse) {
-    print!(
-        "{}",
-        render(
-            response,
-            OutputFormat::Human,
-            OutputLayout::SourcesSections
-        )
-        .expect("human rendering does not fail")
-    );
-}
-
 pub fn render(
     response: &LookupResponse,
     output_format: OutputFormat,
@@ -103,8 +91,8 @@ pub fn render(
 
 fn render_json(response: &LookupResponse, layout: OutputLayout) -> serde_json::Result<String> {
     let value = match layout {
-        OutputLayout::SourcesSections => serde_json::to_value(response)?,
-        OutputLayout::SectionsSources => sections_sources_json(response),
+        OutputLayout::BySource => serde_json::to_value(response)?,
+        OutputLayout::BySection => sections_sources_json(response),
     };
 
     let mut output = serde_json::to_string_pretty(&value)?;
@@ -133,7 +121,7 @@ fn sections_sources_json(response: &LookupResponse) -> Value {
 
     json!({
         "query": &response.query,
-        "layout": "sections-sources",
+        "layout": "by-section",
         "sections": sections,
     })
 }
@@ -159,15 +147,17 @@ fn section_source_json(source: &SourceResult, section: ContentSection) -> Option
 
 fn section_entry_json(entry: &DictionaryEntry, section: ContentSection) -> Option<Value> {
     match section {
-        ContentSection::Etymology => entry.etymology.as_deref().filter(|text| !text.is_empty()).map(
-            |text| {
+        ContentSection::Etymology => entry
+            .etymology
+            .as_deref()
+            .filter(|text| !text.is_empty())
+            .map(|text| {
                 json!({
                     "id": entry.id,
                     "headword": &entry.headword,
                     "text": text,
                 })
-            },
-        ),
+            }),
         ContentSection::Synonyms => {
             let sense_synonyms = collect_sense_synonyms(entry);
             (!entry.synonym_groups.is_empty() || !sense_synonyms.is_empty()).then(|| {
@@ -277,8 +267,8 @@ fn render_text(response: &LookupResponse, syntax: TextSyntax, layout: OutputLayo
     }
 
     match layout {
-        OutputLayout::SourcesSections => render_text_sources_sections(response, syntax, &mut output),
-        OutputLayout::SectionsSources => render_text_sections_sources(response, syntax, &mut output),
+        OutputLayout::BySource => render_text_by_source(response, syntax, &mut output),
+        OutputLayout::BySection => render_text_by_section(response, syntax, &mut output),
     }
 
     if !output.ends_with('\n') {
@@ -288,11 +278,7 @@ fn render_text(response: &LookupResponse, syntax: TextSyntax, layout: OutputLayo
     output
 }
 
-fn render_text_sources_sections(
-    response: &LookupResponse,
-    syntax: TextSyntax,
-    output: &mut String,
-) {
+fn render_text_by_source(response: &LookupResponse, syntax: TextSyntax, output: &mut String) {
     for source in &response.results {
         push_heading(output, syntax, 1, source_title(source.source));
 
@@ -301,82 +287,72 @@ fn render_text_sources_sections(
             continue;
         }
 
-        let mut wrote_section = false;
-        for section in ContentSection::ALL {
-            let rendered_entries = render_entries_for_section(&source.entries, section, syntax, 3);
-            if rendered_entries.is_empty() {
-                continue;
-            }
-
-            push_heading(output, syntax, 2, section.title());
-            output.push_str(&rendered_entries);
-            wrote_section = true;
+        if source.entries.is_empty() {
+            push_paragraph(output, "No content for requested sections.");
+            continue;
         }
 
-        if !wrote_section {
-            push_paragraph(output, "No content for requested sections.");
+        for entry in &source.entries {
+            push_entry_heading(output, syntax, 2, entry);
+            render_entry_metadata(entry, output);
+
+            let mut wrote_section = false;
+            for section in ContentSection::ALL {
+                let mut section_output = String::new();
+                render_entry_section_content(entry, section, syntax, &mut section_output);
+                if section_output.is_empty() {
+                    continue;
+                }
+
+                push_heading(output, syntax, 3, section.title());
+                output.push('\n');
+                output.push_str(&section_output);
+                wrote_section = true;
+            }
+
+            if !wrote_section {
+                push_paragraph(output, "No content for requested sections.");
+            }
         }
     }
 }
 
-fn render_text_sections_sources(
-    response: &LookupResponse,
-    syntax: TextSyntax,
-    output: &mut String,
-) {
+fn render_text_by_section(response: &LookupResponse, syntax: TextSyntax, output: &mut String) {
     let mut wrote_any = false;
 
     for section in ContentSection::ALL {
-        let mut rendered_sources = String::new();
-
+        let mut wrote_section = false;
         for source in &response.results {
             if source_status_message(source).is_some() {
                 continue;
             }
 
-            let rendered_entries = render_entries_for_section(&source.entries, section, syntax, 3);
-            if rendered_entries.is_empty() {
+            let entries_with_content: Vec<&DictionaryEntry> = source
+                .entries
+                .iter()
+                .filter(|entry| entry_has_content_for_section(entry, section))
+                .collect();
+            if entries_with_content.is_empty() {
                 continue;
             }
 
-            push_heading(&mut rendered_sources, syntax, 2, source_title(source.source));
-            rendered_sources.push_str(&rendered_entries);
-        }
+            if !wrote_section {
+                push_heading(output, syntax, 1, section.title());
+                wrote_any = true;
+                wrote_section = true;
+            }
 
-        if rendered_sources.is_empty() {
-            continue;
+            push_heading(output, syntax, 2, source_title(source.source));
+            for entry in entries_with_content {
+                push_entry_heading(output, syntax, 3, entry);
+                render_entry_section_content(entry, section, syntax, output);
+            }
         }
-
-        push_heading(output, syntax, 1, section.title());
-        output.push_str(&rendered_sources);
-        wrote_any = true;
     }
 
     if !wrote_any {
         push_paragraph(output, "No content for requested sections.");
     }
-}
-
-fn render_entries_for_section(
-    entries: &[DictionaryEntry],
-    section: ContentSection,
-    syntax: TextSyntax,
-    entry_heading_level: usize,
-) -> String {
-    let mut output = String::new();
-
-    for entry in entries {
-        let mut entry_output = String::new();
-        render_entry_section_content(entry, section, syntax, &mut entry_output);
-        if entry_output.is_empty() {
-            continue;
-        }
-
-        push_entry_heading(&mut output, syntax, entry_heading_level, entry);
-        output.push_str(&entry_output);
-    }
-
-    output
 }
 
 fn render_entry_section_content(
@@ -408,6 +384,11 @@ fn render_synonyms(entry: &DictionaryEntry, syntax: TextSyntax, output: &mut Str
 
     collect_sense_synonym_items(&entry.senses, &mut items);
 
+    if items.is_empty() {
+        return;
+    }
+
+    ensure_blank_line(output);
     for item in items {
         push_referenced_bullet(output, syntax, 0, item.reference.as_deref(), &item.text);
     }
@@ -447,12 +428,14 @@ fn render_sense_definition(sense: &Sense, syntax: TextSyntax, depth: usize, outp
         return;
     }
 
+    ensure_blank_line(output);
     let line = sense_definition_line(sense);
     if !line.is_empty() {
         push_bullet(output, syntax, depth, &line);
     }
 
     if !sense.examples.is_empty() {
+        ensure_blank_line(output);
         push_label(output, syntax, depth + 1, "Examples:");
         for example in &sense.examples {
             push_bullet(output, syntax, depth + 2, example);
@@ -494,7 +477,13 @@ fn sense_definition_line(sense: &Sense) -> String {
 }
 
 fn render_idioms(entry: &DictionaryEntry, syntax: TextSyntax, output: &mut String) {
-    for item in collect_idioms(entry) {
+    let idioms = collect_idioms(entry);
+    if idioms.is_empty() {
+        return;
+    }
+
+    ensure_blank_line(output);
+    for item in idioms {
         push_referenced_bullet(output, syntax, 0, item.reference.as_deref(), &item.text);
     }
 }
@@ -567,9 +556,7 @@ fn push_heading(output: &mut String, syntax: TextSyntax, level: usize, text: &st
 }
 
 fn push_paragraph(output: &mut String, text: &str) {
-    if !output.ends_with('\n') {
-        output.push('\n');
-    }
+    ensure_blank_line(output);
     output.push_str(text);
     output.push('\n');
 }
@@ -595,6 +582,49 @@ fn ensure_blank_line(output: &mut String) {
 
 fn format_label(label: &str) -> String {
     format!("`{label}`")
+}
+
+fn render_entry_metadata(entry: &DictionaryEntry, output: &mut String) {
+    let fields = [
+        ("Title", entry.title.as_deref()),
+        ("Part of speech", entry.part_of_speech.as_deref()),
+        ("Grammar", entry.grammar.as_deref()),
+    ];
+
+    let mut wrote_any = false;
+    for (label, value) in fields {
+        let Some(value) = value.filter(|value| !value.is_empty()) else {
+            continue;
+        };
+
+        if !wrote_any {
+            ensure_blank_line(output);
+            wrote_any = true;
+        }
+
+        output.push_str(&format!("{label}: {value}\n"));
+    }
+}
+
+fn entry_has_content_for_section(entry: &DictionaryEntry, section: ContentSection) -> bool {
+    match section {
+        ContentSection::Etymology => entry
+            .etymology
+            .as_deref()
+            .is_some_and(|text| !text.is_empty()),
+        ContentSection::Synonyms => {
+            !entry.synonym_groups.is_empty() || entry.senses.iter().any(sense_has_synonym_content)
+        }
+        ContentSection::Definitions => entry
+            .senses
+            .iter()
+            .any(sense_has_definition_section_content),
+        ContentSection::Idioms => !collect_idioms(entry).is_empty(),
+    }
+}
+
+fn sense_has_synonym_content(sense: &Sense) -> bool {
+    !sense.synonyms.is_empty() || sense.subsenses.iter().any(sense_has_synonym_content)
 }
 
 fn source_title(source: Source) -> &'static str {
@@ -724,6 +754,89 @@ mod tests {
                 reference: Some("1a".to_owned()),
                 text: "durch die Bank".to_owned(),
             }]
+        );
+    }
+
+    #[test]
+    fn output_layout_uses_new_cli_names() {
+        assert_eq!(
+            OutputLayout::BySource
+                .to_possible_value()
+                .expect("value")
+                .get_name(),
+            "by-source"
+        );
+        assert_eq!(
+            OutputLayout::BySection
+                .to_possible_value()
+                .expect("value")
+                .get_name(),
+            "by-section"
+        );
+    }
+
+    #[test]
+    fn markdown_by_source_renders_entry_sections_with_blank_lines() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Dwds,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Bank".to_owned(),
+                    title: Some("Bank, die".to_owned()),
+                    part_of_speech: Some("Substantiv".to_owned()),
+                    grammar: Some("feminin".to_owned()),
+                    etymology: Some("von alt".to_owned()),
+                    senses: vec![Sense {
+                        id: 1,
+                        label: Some("1.".to_owned()),
+                        definition: Some("erste Bedeutung".to_owned()),
+                        examples: vec!["ein Beispiel".to_owned()],
+                        ..Sense::default()
+                    }],
+                    idioms: vec!["durch die Bank".to_owned()],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let rendered = render(&response, OutputFormat::Markdown, OutputLayout::BySource)
+            .expect("markdown render");
+
+        assert_eq!(
+            rendered,
+            "# Dwds\n\n## Entry 1\n\nTitle: Bank, die\nPart of speech: Substantiv\nGrammar: feminin\n\n### Etymology\n\nvon alt\n\n### Definitions\n\n- `1.` erste Bedeutung\n\n  Examples:\n    - ein Beispiel\n\n### Idioms\n\n- durch die Bank\n"
+        );
+    }
+
+    #[test]
+    fn markdown_by_section_renders_source_before_entry_with_blank_lines() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Openthesaurus,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Bank".to_owned(),
+                    synonym_groups: vec![SynonymGroup {
+                        sense: None,
+                        categories: Vec::new(),
+                        items: vec!["Parkbank".to_owned(), "Sitzbank".to_owned()],
+                    }],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let rendered = render(&response, OutputFormat::Markdown, OutputLayout::BySection)
+            .expect("markdown render");
+
+        assert_eq!(
+            rendered,
+            "# Synonyms\n\n## Openthesaurus\n\n### Entry 1\n\n- Parkbank, Sitzbank\n"
         );
     }
 }

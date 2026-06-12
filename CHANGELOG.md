@@ -4,6 +4,7 @@ This file records completed changes.
 
 ## Unreleased
 
+- `CHANGED`: Renamed output layouts to `by-source` and `by-section`, made `by-source` the default, and aligned text output spacing with the documented examples.
 - `CHANGED` Updated the README.
 - `CHANGED` Improved Duden lookup latency by returning direct Duden entries immediately instead of waiting for the search page; search is now used only as fallback for missing or unparseable direct entries, this is usually the case, when there are multiple homographs like for the word Bank.
 - `FIX` Cargo.toml had unexepected string `-`, oups.

@@ -25,29 +25,29 @@ Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiede
 
 - Make two variants of the ouput: 
   - by-source
-    Example in markdown: [example-output-markdown--sources-sections.md](example-output-markdown--sources-sections.md)
+    Example in markdown: [example-output-markdown--by-source.md](example-output-markdown--by-source.md)
   - by-section
-    Example for markdown [example-output-markdown--sections-sources.md](example-output-markdown--sections-sources.md)
+    Example for markdown [example-output-markdown--by-section.md](example-output-markdown--by-section.md)
 
-# NEXT Fix Compiler Warnings
+# DONE [Fix Compiler Warnings](./2026-06-12--output-layout-naming-and-spacing.md)
 
-# NEXT Rename sources-sections and sections-sources
+# DONE [Rename sources-sections and sections-sources](./2026-06-12--output-layout-naming-and-spacing.md)
 
 sources-sections to by-source
 sections-sources to by-section
 
-# NEXT Change Default
+# DONE [Change Default](./2026-06-12--output-layout-naming-and-spacing.md)
 
 Default is by-source
 
-# NEXT Fix newlines
+# DONE [Fix newlines](./2026-06-12--output-layout-naming-and-spacing.md)
 
 Make the output use newlines as shown in the examples:
 
 - by-source
-  Example in markdown: [example-output-markdown--sources-sections.md](example-output-markdown--sources-sections.md)
+  Example in markdown: [example-output-markdown--by-source.md](example-output-markdown--by-source.md)
 - by-section
-  Example for markdown [example-output-markdown--sections-sources.md](example-output-markdown--sections-sources.md)
+  Example for markdown [example-output-markdown--by-section.md](example-output-markdown--by-section.md)
 
 # TODO JSON should not accept layout
 

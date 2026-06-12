@@ -26,8 +26,8 @@ struct Cli {
     #[arg(long, value_enum, default_value = "human")]
     format: OutputFormat,
 
-    /// Output layout: sources-sections or sections-sources.
-    #[arg(long, value_enum, default_value = "sources-sections")]
+    /// Output layout: by-source or by-section.
+    #[arg(long, value_enum, default_value = "by-source")]
     layout: OutputLayout,
 
     /// Comma-separated sources: openthesaurus,dwds,duden,wiktionary.
