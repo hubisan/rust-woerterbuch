@@ -4,6 +4,7 @@ This file records completed changes.
 
 ## Unreleased
 
+- `CHANGED`: Human, Markdown, and Org output now include lookup title/date headers, and JSON output now includes a top-level timestamp.
 - `CHANGED`: Human output now renders sense labels and references with single quotes instead of backticks.
 - `CHANGED`: Text output now omits redundant `Entry 1` headings for sources that only have a single entry.
 - `FIXED`: Duden lookups now resolve words with umlauts and `ß` correctly by using the `ae/oe/ue/ss` URL spellings Duden expects.

@@ -1,4 +1,5 @@
 use crate::models::{DictionaryEntry, LookupResponse, Sense, Source, SourceResult, SynonymGroup};
+use chrono::{DateTime, Local, SecondsFormat};
 use clap::ValueEnum;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -72,26 +73,48 @@ pub fn render(
     layout: OutputLayout,
     max_examples: Option<usize>,
 ) -> serde_json::Result<String> {
+    let timestamp = Local::now();
+
     match output_format {
-        OutputFormat::Json => render_json(response),
+        OutputFormat::Json => render_json(response, timestamp),
         OutputFormat::Human => Ok(render_text(
             response,
             TextSyntax::Human,
             layout,
             max_examples,
+            timestamp,
         )),
         OutputFormat::Markdown => Ok(render_text(
             response,
             TextSyntax::Markdown,
             layout,
             max_examples,
+            timestamp,
         )),
-        OutputFormat::Org => Ok(render_text(response, TextSyntax::Org, layout, max_examples)),
+        OutputFormat::Org => Ok(render_text(
+            response,
+            TextSyntax::Org,
+            layout,
+            max_examples,
+            timestamp,
+        )),
     }
 }
 
-fn render_json(response: &LookupResponse) -> serde_json::Result<String> {
-    let mut output = serde_json::to_string_pretty(response)?;
+fn render_json(
+    response: &LookupResponse,
+    timestamp: DateTime<Local>,
+) -> serde_json::Result<String> {
+    let mut value = serde_json::to_value(response)?;
+
+    if let serde_json::Value::Object(ref mut object) = value {
+        object.insert(
+            "timestamp".to_owned(),
+            serde_json::Value::String(timestamp.to_rfc3339_opts(SecondsFormat::Secs, false)),
+        );
+    }
+
+    let mut output = serde_json::to_string_pretty(&value)?;
     output.push('\n');
     Ok(output)
 }
@@ -101,18 +124,14 @@ fn render_text(
     syntax: TextSyntax,
     layout: OutputLayout,
     max_examples: Option<usize>,
+    timestamp: DateTime<Local>,
 ) -> String {
     let mut output = String::new();
 
-    if syntax == TextSyntax::Human {
-        output.push_str(&format!("Dictionary lookup: {}\n", response.query));
+    push_document_header(&mut output, response, syntax, timestamp);
 
-        if response.results.is_empty() {
-            output.push_str("No sources selected.\n");
-            return output;
-        }
-    } else if response.results.is_empty() {
-        output.push_str("No sources selected.\n");
+    if response.results.is_empty() {
+        push_paragraph(&mut output, "No sources selected.");
         return output;
     }
 
@@ -130,6 +149,44 @@ fn render_text(
     }
 
     output
+}
+
+fn push_document_header(
+    output: &mut String,
+    response: &LookupResponse,
+    syntax: TextSyntax,
+    timestamp: DateTime<Local>,
+) {
+    let title = format!("Wörterbuch: {}", response.query);
+
+    match syntax {
+        TextSyntax::Human => {
+            output.push_str(&title);
+            output.push('\n');
+            output.push_str(&timestamp.format("%Y-%m-%d %a %H:%M").to_string());
+            output.push_str("\n\n");
+        }
+        TextSyntax::Markdown => {
+            output.push_str("---\n");
+            output.push_str(&format!("title: \"{}\"\n", yaml_escape(&title)));
+            output.push_str(&format!(
+                "date: \"{}\"\n",
+                timestamp.format("%Y-%m-%d %H:%M")
+            ));
+            output.push_str("---\n\n");
+        }
+        TextSyntax::Org => {
+            output.push_str(&format!("#+TITLE: {title}\n"));
+            output.push_str(&format!(
+                "#+DATE: [{}]\n\n",
+                timestamp.format("%Y-%m-%d %a %H:%M")
+            ));
+        }
+    }
+}
+
+fn yaml_escape(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 fn render_text_by_source(
@@ -710,10 +767,8 @@ mod tests {
         )
         .expect("markdown render");
 
-        assert_eq!(
-            rendered,
-            "# Dwds\n\nTitle: Bank, die\nPart of speech: Substantiv\nGrammar: feminin\n\n## Etymology\n\nvon alt\n\n## Definitions\n\n- `1.` erste Bedeutung\n\n  Examples:\n    - ein Beispiel\n\n## Idioms\n\n- durch die Bank\n"
-        );
+        assert!(rendered.starts_with("---\ntitle: \"Wörterbuch: Bank\"\ndate: \""));
+        assert!(rendered.contains("\n---\n\n# Dwds\n\nTitle: Bank, die\nPart of speech: Substantiv\nGrammar: feminin\n\n## Etymology\n\nvon alt\n\n## Definitions\n\n- `1.` erste Bedeutung\n\n  Examples:\n    - ein Beispiel\n\n## Idioms\n\n- durch die Bank\n"));
     }
 
     #[test]
@@ -749,6 +804,7 @@ mod tests {
         )
         .expect("markdown render");
 
+        assert!(rendered.starts_with("---\ntitle: \"Wörterbuch: Buch\"\ndate: \""));
         assert!(!rendered.contains("## Entry 1"));
         assert!(rendered.contains("# Dwds\n\nTitle: Buch, das"));
         assert!(rendered.contains("\n## Etymology\n\nvon alt\n"));
@@ -783,9 +839,9 @@ mod tests {
         )
         .expect("markdown render");
 
-        assert_eq!(
-            rendered,
-            "# Synonyms\n\n## Openthesaurus\n\n- Parkbank, Sitzbank\n"
+        assert!(rendered.starts_with("---\ntitle: \"Wörterbuch: Bank\"\ndate: \""));
+        assert!(
+            rendered.contains("\n---\n\n# Synonyms\n\n## Openthesaurus\n\n- Parkbank, Sitzbank\n")
         );
     }
 
@@ -834,6 +890,7 @@ mod tests {
         )
         .expect("markdown render");
 
+        assert!(rendered.starts_with("---\ntitle: \"Wörterbuch: Bank\"\ndate: \""));
         assert!(rendered.contains("## Entry 1"));
         assert!(rendered.contains("## Entry 2"));
         assert!(rendered.contains("\n### Definitions\n\n- `1.` erste Bedeutung\n"));
@@ -883,6 +940,7 @@ mod tests {
         )
         .expect("markdown render");
 
+        assert!(rendered.starts_with("---\ntitle: \"Wörterbuch: Bank\"\ndate: \""));
         assert!(rendered.contains("### Entry 1"));
         assert!(rendered.contains("### Entry 2"));
         assert!(rendered.contains("- Parkbank"));
@@ -918,6 +976,7 @@ mod tests {
         )
         .expect("markdown render");
 
+        assert!(rendered.starts_with("---\ntitle: \"Wörterbuch: Buch\"\ndate: \""));
         assert!(!rendered.contains("### Entry 1"));
         assert!(rendered.contains("# Definitions\n\n## Dwds\n\n- `1.` ein Werk\n"));
     }
@@ -947,6 +1006,7 @@ mod tests {
         let rendered =
             render(&response, OutputFormat::Org, OutputLayout::BySource, None).expect("org render");
 
+        assert!(rendered.starts_with("#+TITLE: Wörterbuch: Bank\n#+DATE: ["));
         assert!(rendered.contains("- ~1a~ erste Bedeutung"));
     }
 
@@ -974,6 +1034,7 @@ mod tests {
         let rendered = render(&response, OutputFormat::Human, OutputLayout::BySource, None)
             .expect("human render");
 
+        assert!(rendered.starts_with("Wörterbuch: Bank\n"));
         assert!(rendered.contains("- '1a' erste Bedeutung"));
         assert!(!rendered.contains("- `1a` erste Bedeutung"));
     }
@@ -1002,6 +1063,7 @@ mod tests {
         let rendered =
             render(&response, OutputFormat::Org, OutputLayout::BySource, None).expect("org render");
 
+        assert!(rendered.starts_with("#+TITLE: Wörterbuch: Bank\n#+DATE: ["));
         assert!(rendered.contains("- ~1a~: durch die Bank"));
     }
 
@@ -1029,6 +1091,7 @@ mod tests {
         let rendered = render(&response, OutputFormat::Human, OutputLayout::BySource, None)
             .expect("human render");
 
+        assert!(rendered.starts_with("Wörterbuch: Bank\n"));
         assert!(rendered.contains("- '1a': durch die Bank"));
         assert!(!rendered.contains("- `1a`: durch die Bank"));
     }
@@ -1063,6 +1126,7 @@ mod tests {
         )
         .expect("markdown render");
 
+        assert!(rendered.starts_with("---\ntitle: \"Wörterbuch: Bank\"\ndate: \""));
         assert!(rendered.contains("    - eins\n    - zwei\n"));
         assert!(!rendered.contains("    - drei\n"));
     }
@@ -1097,6 +1161,7 @@ mod tests {
         )
         .expect("org render");
 
+        assert!(rendered.starts_with("#+TITLE: Wörterbuch: Bank\n#+DATE: ["));
         assert!(rendered.contains("- ~1.~ erste Bedeutung"));
         assert!(!rendered.contains("Examples:"));
         assert!(!rendered.contains("- eins"));
@@ -1135,7 +1200,11 @@ mod tests {
         .expect("json render");
         let parsed: serde_json::Value = serde_json::from_str(&limited).expect("valid json");
 
-        assert_eq!(full, limited);
+        assert!(serde_json::from_str::<serde_json::Value>(&full)
+            .expect("valid json")
+            .get("timestamp")
+            .is_some_and(serde_json::Value::is_string));
+        assert!(parsed["timestamp"].is_string());
         assert_eq!(
             parsed["results"][0]["entries"][0]["senses"][0]["examples"],
             serde_json::json!(["eins", "zwei"])

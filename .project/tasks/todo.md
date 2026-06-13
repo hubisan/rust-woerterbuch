@@ -31,6 +31,8 @@ Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiede
 
 # Abgeschlossen
 
+## DONE 2026-06-13 [Add timestamps/headers to dictionary output formats](./archive/2026-06-13--add-timestamps-headers-output-formats.md)
+
 ## DONE 2026-06-13 [Bei Human Format 'nr' statt `nr` verwenden](./archive/2026-06-13--human-format-single-quotes.md)
 
 ## DONE 2026-06-13 [Omit redundant single-entry headings](./archive/2026-06-13--omit-redundant-single-entry-headings.md)
