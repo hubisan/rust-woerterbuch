@@ -178,7 +178,7 @@ fn push_document_header(
         TextSyntax::Org => {
             output.push_str(&format!("#+TITLE: {title}\n"));
             output.push_str(&format!(
-                "#+DATE: [{}]\n\n",
+                "#+DATE: [{}]\n#+STARTUP: showall\n\n",
                 timestamp.format("%Y-%m-%d %a %H:%M")
             ));
         }
@@ -1007,6 +1007,7 @@ mod tests {
             render(&response, OutputFormat::Org, OutputLayout::BySource, None).expect("org render");
 
         assert!(rendered.starts_with("#+TITLE: Wörterbuch: Bank\n#+DATE: ["));
+        assert!(rendered.contains("\n#+STARTUP: showall\n\n"));
         assert!(rendered.contains("- ~1a~ erste Bedeutung"));
     }
 
@@ -1064,6 +1065,7 @@ mod tests {
             render(&response, OutputFormat::Org, OutputLayout::BySource, None).expect("org render");
 
         assert!(rendered.starts_with("#+TITLE: Wörterbuch: Bank\n#+DATE: ["));
+        assert!(rendered.contains("\n#+STARTUP: showall\n\n"));
         assert!(rendered.contains("- ~1a~: durch die Bank"));
     }
 
@@ -1162,6 +1164,7 @@ mod tests {
         .expect("org render");
 
         assert!(rendered.starts_with("#+TITLE: Wörterbuch: Bank\n#+DATE: ["));
+        assert!(rendered.contains("\n#+STARTUP: showall\n\n"));
         assert!(rendered.contains("- ~1.~ erste Bedeutung"));
         assert!(!rendered.contains("Examples:"));
         assert!(!rendered.contains("- eins"));
