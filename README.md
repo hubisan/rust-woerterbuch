@@ -37,7 +37,7 @@ For local installation into Cargo's binary directory:
 ```bash
 git clone https://github.com/hubisan/rust-woerterbuch
 cd rust-woerterbuch
-cargo install --path .
+cargo install --path . --locked --force
 ```
 
 After that, the command should be available as:

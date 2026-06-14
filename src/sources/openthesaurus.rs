@@ -5,12 +5,21 @@ use reqwest::Client;
 use serde::Deserialize;
 
 pub async fn lookup(client: &Client, query: &str) -> Result<SourceResult> {
-    let encoded = urlencoding::encode(query);
-    let api_url =
-        format!("https://www.openthesaurus.de/synonyme/search?format=application/json&q={encoded}");
-    let page_url = format!("https://www.openthesaurus.de/synonyme/{encoded}");
+    let trimmed_query = query.trim();
+    let api_url = build_api_url(trimmed_query);
+    let page_url = build_page_url(trimmed_query);
     let body = fetch_html(client, &api_url).await?;
-    parse(query, &page_url, &body)
+    parse(trimmed_query, &page_url, &body)
+}
+
+pub fn build_api_url(query: &str) -> String {
+    let encoded = urlencoding::encode(query.trim());
+    format!("https://www.openthesaurus.de/synonyme/search?format=application/json&q={encoded}")
+}
+
+pub fn build_page_url(query: &str) -> String {
+    let encoded = urlencoding::encode(query.trim());
+    format!("https://www.openthesaurus.de/synonyme/{encoded}")
 }
 
 pub fn parse(query: &str, url: &str, body: &str) -> Result<SourceResult> {
@@ -224,5 +233,21 @@ mod tests {
         assert!(!response.ok);
         assert_eq!(response.error.as_deref(), Some("No matches found"));
         assert!(response.entries.is_empty());
+    }
+
+    #[test]
+    fn builds_urls_without_sharp_s_fallbacks() {
+        assert_eq!(
+            build_page_url("Straße"),
+            "https://www.openthesaurus.de/synonyme/Stra%C3%9Fe"
+        );
+        assert_eq!(
+            build_page_url("Strasse"),
+            "https://www.openthesaurus.de/synonyme/Strasse"
+        );
+        assert_eq!(
+            build_page_url("geschäftliche Aktivitäten"),
+            "https://www.openthesaurus.de/synonyme/gesch%C3%A4ftliche%20Aktivit%C3%A4ten"
+        );
     }
 }

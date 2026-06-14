@@ -1,6 +1,7 @@
 mod format;
 mod http;
 mod models;
+mod orthography;
 mod sources;
 
 use anyhow::{bail, Result};

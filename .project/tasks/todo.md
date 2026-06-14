@@ -16,6 +16,31 @@ Important files:
 
 Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiedenen Quellen — Duden, DWDS, Wiktionary und OpenThesaurus — via Scraping aggregiert, wird in ein performantes, asynchrones Rust-CLI-Tool umgewandelt.
 
+# TODO Examples as Heading/List
+
+Anstatt einfach so:
+
+```markdown
+Example
+- ...
+```
+
+Besser als Subheading:
+
+```markdown
+### Examples
+
+- die Straße von Dover, von Gibraltar
+```
+
+In Org:
+
+```text
+*** Examples
+
+- die Straße von Dover, von Gibraltar
+```
+
 # TODO Release checkpoint
 
 - Fresh clone test:
@@ -29,7 +54,9 @@ Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiede
 
 - Confirm README, CHANGELOG, CI, and basic Emacs usage are all in sync.
 
-# Abgeschlossen
+# Completed
+
+## DONE 2026-06-14 [Fix source URLs, Swiss `ss`, sharp S candidates, and provider quirks](./archive/2026-06-14--fix-source-urls-swiss-ss-provider-quirks.md)
 
 ## DONE 2026-06-13 [Add timestamps/headers to dictionary output formats](./archive/2026-06-13--add-timestamps-headers-output-formats.md)
 

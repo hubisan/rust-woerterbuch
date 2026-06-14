@@ -1,4 +1,5 @@
 use crate::models::{dedupe, DictionaryEntry, Sense, Source, SourceResult, SynonymGroup, UrlValue};
+use crate::orthography::generate_sharp_s_candidates;
 use anyhow::Result;
 use reqwest::{Client, StatusCode};
 use scraper::{ElementRef, Html, Selector};
@@ -15,36 +16,152 @@ const WORD_CLASSES: &[&str] = &[
 ];
 
 pub async fn lookup(client: &Client, query: &str) -> Result<SourceResult> {
-    let encoded = urlencoding::encode(query);
-    let api_url = format!("https://de.wiktionary.org/api/rest_v1/page/html/{encoded}");
-    let page_url = format!("https://de.wiktionary.org/wiki/{encoded}");
+    let trimmed_query = query.trim();
+    let original = fetch_and_parse_candidate(client, trimmed_query, trimmed_query).await?;
+    if original.quality == WiktionaryPageQuality::MainLemma {
+        return Ok(original.source_result);
+    }
+
+    let mut fallback_result = if original.source_result.ok {
+        Some(original.source_result.clone())
+    } else {
+        None
+    };
+
+    for candidate in generate_sharp_s_candidates(trimmed_query)
+        .into_iter()
+        .skip(1)
+    {
+        let result = fetch_and_parse_candidate(client, trimmed_query, &candidate).await?;
+        if result.quality == WiktionaryPageQuality::MainLemma {
+            return Ok(result.source_result);
+        }
+        if fallback_result.is_none() && result.source_result.ok {
+            fallback_result = Some(result.source_result);
+        }
+    }
+
+    Ok(fallback_result.unwrap_or(original.source_result))
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn parse(query: &str, page_url: &str, html: &str) -> Result<SourceResult> {
+    Ok(parse_with_quality(query, page_url, html).0)
+}
+
+pub fn build_page_title(query: &str) -> String {
+    query.split_whitespace().collect::<Vec<_>>().join("_")
+}
+
+pub fn build_api_url(query: &str) -> String {
+    let title = build_page_title(query.trim());
+    format!(
+        "https://de.wiktionary.org/api/rest_v1/page/html/{}",
+        urlencoding::encode(&title)
+    )
+}
+
+pub fn build_page_url(query: &str) -> String {
+    let title = build_page_title(query.trim());
+    format!(
+        "https://de.wiktionary.org/wiki/{}",
+        urlencoding::encode(&title)
+    )
+}
+
+fn parse_with_quality(
+    query: &str,
+    page_url: &str,
+    html: &str,
+) -> (SourceResult, WiktionaryPageQuality) {
+    let document = Html::parse_document(html);
+    let lemma = extract_page_title(&document).unwrap_or_else(|| query.to_owned());
+    let entries = extract_entries(&document, &lemma, page_url);
+    let quality = classify_page_quality(&document, &entries);
+
+    if entries.is_empty() {
+        (not_found_result(&lemma, page_url), quality)
+    } else {
+        (
+            SourceResult::ok(
+                Source::Wiktionary,
+                Some(UrlValue::One(page_url.to_owned())),
+                entries,
+            ),
+            quality,
+        )
+    }
+}
+
+async fn fetch_and_parse_candidate(
+    client: &Client,
+    fallback_query: &str,
+    candidate: &str,
+) -> Result<WiktionaryCandidateResult> {
+    let api_url = build_api_url(candidate);
+    let page_url = build_page_url(candidate);
 
     let response = client.get(&api_url).send().await?;
     let status = response.status();
     let body = response.text().await?;
 
     if status == StatusCode::NOT_FOUND {
-        return Ok(not_found_result(query, &page_url));
+        return Ok(WiktionaryCandidateResult {
+            source_result: not_found_result(fallback_query, &page_url),
+            quality: WiktionaryPageQuality::Missing,
+        });
     }
 
     response_error(status, &body)?;
-    parse(query, &page_url, &body)
+    let (source_result, quality) = parse_with_quality(fallback_query, &page_url, &body);
+    Ok(WiktionaryCandidateResult {
+        source_result,
+        quality,
+    })
 }
 
-pub fn parse(query: &str, page_url: &str, html: &str) -> Result<SourceResult> {
-    let document = Html::parse_document(html);
-    let lemma = extract_page_title(&document).unwrap_or_else(|| query.to_owned());
-    let entries = extract_entries(&document, &lemma, page_url);
+#[derive(Debug, Clone)]
+struct WiktionaryCandidateResult {
+    source_result: SourceResult,
+    quality: WiktionaryPageQuality,
+}
 
-    if entries.is_empty() {
-        Ok(not_found_result(&lemma, page_url))
-    } else {
-        Ok(SourceResult::ok(
-            Source::Wiktionary,
-            Some(UrlValue::One(page_url.to_owned())),
-            entries,
-        ))
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WiktionaryPageQuality {
+    MainLemma,
+    AlternateSpelling,
+    InflectedForm,
+    Missing,
+    Unknown,
+}
+
+fn classify_page_quality(document: &Html, entries: &[DictionaryEntry]) -> WiktionaryPageQuality {
+    if entries.iter().any(entry_has_main_lemma_content) {
+        return WiktionaryPageQuality::MainLemma;
     }
+
+    let text =
+        clean_text(&document.root_element().text().collect::<Vec<_>>().join(" ")).to_lowercase();
+
+    if text.contains("ist eine andere schreibung von")
+        || text.contains("schweizer und liechtensteiner schreibweise")
+        || text.contains("alle weiteren informationen findest du im haupteintrag")
+    {
+        return WiktionaryPageQuality::AlternateSpelling;
+    }
+
+    if text.contains("ist eine flektierte form von") {
+        return WiktionaryPageQuality::InflectedForm;
+    }
+
+    WiktionaryPageQuality::Unknown
+}
+
+fn entry_has_main_lemma_content(entry: &DictionaryEntry) -> bool {
+    !entry.senses.is_empty()
+        || !entry.synonym_groups.is_empty()
+        || entry.etymology.is_some()
+        || !entry.idioms.is_empty()
 }
 
 fn response_error(status: StatusCode, body: &str) -> Result<()> {
@@ -703,5 +820,52 @@ mod tests {
         assert_eq!(senses[1].label.as_deref(), Some("2"));
         assert_eq!(senses[1].definition.as_deref(), Some("zweite Bedeutung"));
         assert_eq!(senses[1].examples, vec!["zweites Beispiel".to_owned()]);
+    }
+
+    #[test]
+    fn builds_mediawiki_titles_and_urls() {
+        assert_eq!(build_page_title(" Café au Lait "), "Café_au_Lait");
+        assert_eq!(
+            build_page_url("Café au Lait"),
+            "https://de.wiktionary.org/wiki/Caf%C3%A9_au_Lait"
+        );
+        assert_eq!(
+            build_api_url("Café au Lait"),
+            "https://de.wiktionary.org/api/rest_v1/page/html/Caf%C3%A9_au_Lait"
+        );
+        assert_eq!(
+            build_page_url("Straße"),
+            "https://de.wiktionary.org/wiki/Stra%C3%9Fe"
+        );
+    }
+
+    #[test]
+    fn classifies_weak_and_strong_pages() {
+        let weak = Html::parse_document(
+            "<html><body>Strasse ist eine andere Schreibung von Straße. Alle weiteren Informationen findest du im Haupteintrag.</body></html>",
+        );
+        assert_eq!(
+            classify_page_quality(&weak, &[]),
+            WiktionaryPageQuality::AlternateSpelling
+        );
+
+        let inflected = Html::parse_document(
+            "<html><body>ging ist eine flektierte Form von gehen.</body></html>",
+        );
+        assert_eq!(
+            classify_page_quality(&inflected, &[]),
+            WiktionaryPageQuality::InflectedForm
+        );
+
+        let entry = DictionaryEntry {
+            senses: vec![Sense::simple(1, "definition")],
+            ..DictionaryEntry::new(1, "Straße")
+        };
+        let strong =
+            Html::parse_document("<html><body><section>real entry</section></body></html>");
+        assert_eq!(
+            classify_page_quality(&strong, &[entry]),
+            WiktionaryPageQuality::MainLemma
+        );
     }
 }

@@ -10,7 +10,7 @@ const DEFINITION_SKIP_CLASSES: &[&str] = &["dwdswb-binnenquelle", "dwdswb-paraph
 pub async fn lookup(client: &Client, query: &str) -> Result<SourceResult> {
     let url = build_url(query);
     let html = fetch_html(client, &url).await?;
-    parse(query, &url, &html)
+    parse(query.trim(), &url, &html)
 }
 
 pub fn parse(query: &str, page_url: &str, html: &str) -> Result<SourceResult> {
@@ -37,8 +37,8 @@ pub fn parse(query: &str, page_url: &str, html: &str) -> Result<SourceResult> {
     }
 }
 
-fn build_url(lemma: &str) -> String {
-    format!("{DWDS_BASE_URL}{}", urlencoding::encode(lemma))
+pub fn build_url(lemma: &str) -> String {
+    format!("{DWDS_BASE_URL}{}", urlencoding::encode(lemma.trim()))
 }
 
 fn parse_homograph(
@@ -680,5 +680,15 @@ mod tests {
         assert!(!response.ok);
         assert_eq!(response.error.as_deref(), Some("No matches found"));
         assert!(response.entries.is_empty());
+    }
+
+    #[test]
+    fn builds_dwds_urls_without_local_sharp_s_rewrites() {
+        assert_eq!(build_url("Straße"), "https://www.dwds.de/wb/Stra%C3%9Fe");
+        assert_eq!(build_url("Strasse"), "https://www.dwds.de/wb/Strasse");
+        assert_eq!(
+            build_url("Café complet"),
+            "https://www.dwds.de/wb/Caf%C3%A9%20complet"
+        );
     }
 }

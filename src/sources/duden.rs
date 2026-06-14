@@ -1,55 +1,98 @@
 use crate::models::{DictionaryEntry, Sense, Source, SourceResult, SynonymGroup, UrlValue};
+use crate::orthography::generate_sharp_s_candidates;
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
 use reqwest::{Client, StatusCode};
 use scraper::{ElementRef, Html, Selector};
+use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
 
 const DUDEN_ENTRY_BASE: &str = "https://www.duden.de/rechtschreibung/";
 const DUDEN_SEARCH_BASE: &str = "https://www.duden.de/suchen/dudenonline/";
 const DUDEN_BASE: &str = "https://www.duden.de";
 
 pub async fn lookup(client: &Client, query: &str) -> Result<SourceResult> {
-    let entry_url = build_url(query);
+    let entry_urls = build_url_candidates(query);
     let search_url = build_search_url(query);
 
     let search_client = client.clone();
     let search_handle =
         tokio::spawn(async move { fetch_response(&search_client, &search_url).await });
 
-    match fetch_response(client, &entry_url).await {
-        Ok((StatusCode::NOT_FOUND, _)) => {
-            let search_response = await_search_response(search_handle).await?;
-            process_search_response(client, query, search_response).await
-        }
-        Ok((status, _body)) if !status.is_success() => {
-            let search_response = await_search_response(search_handle).await?;
-            process_search_response(client, query, search_response).await
-        }
-        Ok((_status, body)) => match parse_entry(query, &entry_url, &body, 1) {
-            Some(entry) => {
-                search_handle.abort();
-                Ok(SourceResult::ok(
-                    Source::Duden,
-                    Some(UrlValue::One(entry_url)),
-                    vec![entry],
-                ))
-            }
-            None => {
-                let search_response = await_search_response(search_handle).await?;
-                process_search_response(client, query, search_response).await
-            }
-        },
-        Err(entry_err) => match await_search_response(search_handle).await {
-            Ok(search_response) => {
-                match process_search_response(client, query, search_response).await {
-                    Ok(result) if result.ok => Ok(result),
-                    Ok(_no_match) => Err(entry_err),
-                    Err(_search_err) => Err(entry_err),
+    let mut first_entry_err = None;
+
+    for entry_url in &entry_urls {
+        match fetch_response(client, entry_url).await {
+            Ok((StatusCode::NOT_FOUND, _)) => continue,
+            Ok((status, _body)) if !status.is_success() => continue,
+            Ok((_status, body)) => match parse_entry(query, entry_url, &body, 1) {
+                Some(entry) => {
+                    search_handle.abort();
+                    return Ok(SourceResult::ok(
+                        Source::Duden,
+                        Some(UrlValue::One(entry_url.clone())),
+                        vec![entry],
+                    ));
+                }
+                None => continue,
+            },
+            Err(entry_err) => {
+                if first_entry_err.is_none() {
+                    first_entry_err = Some(entry_err);
                 }
             }
-            Err(_join_or_search_err) => Err(entry_err),
+        }
+    }
+
+    match await_search_response(search_handle).await {
+        Ok(search_response) => {
+            match process_search_response(client, query, search_response).await {
+                Ok(result) if result.ok => Ok(result),
+                Ok(result) => match first_entry_err {
+                    Some(err) => Err(err),
+                    None => Ok(result),
+                },
+                Err(search_err) => match first_entry_err {
+                    Some(err) => Err(err),
+                    None => Err(search_err),
+                },
+            }
+        }
+        Err(join_err) => match first_entry_err {
+            Some(err) => Err(err),
+            None => Err(join_err),
         },
     }
+}
+
+pub fn build_url_candidates(query: &str) -> Vec<String> {
+    let mut urls = Vec::new();
+    for candidate in generate_sharp_s_candidates(query.trim()) {
+        let url = build_url(&candidate);
+        if !urls.contains(&url) {
+            urls.push(url);
+        }
+    }
+    urls
+}
+
+pub fn build_url(lemma: &str) -> String {
+    let normalized = duden_lookup_key(lemma)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join("_");
+    format!(
+        "{}{normalized}?amp",
+        DUDEN_ENTRY_BASE,
+        normalized = urlencoding::encode(&normalized)
+    )
+}
+
+pub fn build_search_url(lemma: &str) -> String {
+    format!(
+        "{}{lemma}",
+        DUDEN_SEARCH_BASE,
+        lemma = urlencoding::encode(lemma.trim())
+    )
 }
 
 async fn await_search_response(
@@ -78,24 +121,29 @@ async fn process_search_response(
     }
 }
 
-pub fn build_url(lemma: &str) -> String {
-    let normalized = duden_lookup_key(lemma)
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join("_");
-    format!(
-        "{}{normalized}?amp",
-        DUDEN_ENTRY_BASE,
-        normalized = urlencoding::encode(&normalized)
-    )
-}
+fn duden_lookup_key(input: &str) -> String {
+    let mut out = String::new();
 
-pub fn build_search_url(lemma: &str) -> String {
-    format!(
-        "{}{lemma}",
-        DUDEN_SEARCH_BASE,
-        lemma = urlencoding::encode(lemma)
-    )
+    for ch in input.trim().chars() {
+        match ch {
+            'ä' => out.push_str("ae"),
+            'ö' => out.push_str("oe"),
+            'ü' => out.push_str("ue"),
+            'ß' => out.push_str("sz"),
+            'Ä' => out.push_str("Ae"),
+            'Ö' => out.push_str("Oe"),
+            'Ü' => out.push_str("Ue"),
+            _ => {
+                for normalized in ch.nfd() {
+                    if !is_combining_mark(normalized) {
+                        out.push(normalized);
+                    }
+                }
+            }
+        }
+    }
+
+    out
 }
 
 async fn lookup_entries_from_urls(
@@ -282,6 +330,9 @@ pub fn parse_search_results_for_fixture(document: &Html, lemma: &str) -> Vec<Str
         }
 
         let visible = search_result_lemma(&label);
+        if visible.starts_with('-') || visible.ends_with('-') {
+            continue;
+        }
         if normalized_search_lemma(&visible) == normalized_search_lemma(lemma) {
             urls.push(ensure_amp_url(&absolute_url(href)));
         }
@@ -314,27 +365,24 @@ fn extract_title_node(document: &Html) -> Option<ElementRef<'_>> {
     document.select(&selector("h1.lemma__title")).next()
 }
 
-fn duden_lookup_key(input: &str) -> String {
+fn normalized_search_lemma(input: &str) -> String {
     let mut out = String::new();
 
-    for ch in input.chars() {
+    for ch in clean_text(input).chars() {
         match ch {
             'ä' => out.push_str("ae"),
             'ö' => out.push_str("oe"),
             'ü' => out.push_str("ue"),
             'ß' => out.push_str("ss"),
-            'Ä' => out.push_str("Ae"),
-            'Ö' => out.push_str("Oe"),
-            'Ü' => out.push_str("Ue"),
-            _ => out.push(ch),
+            'Ä' => out.push_str("ae"),
+            'Ö' => out.push_str("oe"),
+            'Ü' => out.push_str("ue"),
+            _ if ch.is_alphanumeric() => out.extend(ch.to_lowercase()),
+            _ => {}
         }
     }
 
-    out
-}
-
-fn normalized_search_lemma(input: &str) -> String {
-    clean_text(&duden_lookup_key(input)).to_lowercase()
+    out.replace("sz", "ss")
 }
 
 fn extract_lemma(title_node: Option<&ElementRef<'_>>, fallback: &str) -> String {
@@ -797,12 +845,42 @@ mod tests {
         );
         assert_eq!(
             build_url("Straße"),
-            "https://www.duden.de/rechtschreibung/Strasse?amp"
+            "https://www.duden.de/rechtschreibung/Strasze?amp"
+        );
+        assert_eq!(
+            build_url("Grüß"),
+            "https://www.duden.de/rechtschreibung/Gruesz?amp"
+        );
+        assert_eq!(
+            build_url("Café complet"),
+            "https://www.duden.de/rechtschreibung/Cafe_complet?amp"
+        );
+        assert_eq!(
+            build_url("Café au Lait"),
+            "https://www.duden.de/rechtschreibung/Cafe_au_Lait?amp"
         );
     }
 
     #[test]
-    fn search_result_matching_treats_umlauts_and_expansions_as_equal() {
+    fn build_url_candidates_include_sharp_s_fallbacks() {
+        assert_eq!(
+            build_url_candidates("Strasse"),
+            vec![
+                "https://www.duden.de/rechtschreibung/Strasse?amp".to_owned(),
+                "https://www.duden.de/rechtschreibung/Strasze?amp".to_owned(),
+            ]
+        );
+        assert_eq!(
+            build_url_candidates("Gruss"),
+            vec![
+                "https://www.duden.de/rechtschreibung/Gruss?amp".to_owned(),
+                "https://www.duden.de/rechtschreibung/Grusz?amp".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn search_result_matching_treats_umlauts_sharp_s_and_slug_expansions_as_equal() {
         let html = Html::parse_document(
             r#"
             <div class="segment">
@@ -828,6 +906,24 @@ mod tests {
         assert_eq!(
             parse_search_results(&html, "Geruest"),
             vec!["https://www.duden.de/rechtschreibung/Geruest?amp".to_owned()]
+        );
+
+        let html = Html::parse_document(
+            r#"
+            <div class="segment">
+              <h2 class="segment__title">Wörterbuch</h2>
+              <section class="vignette">
+                <a class="vignette__label" href="/rechtschreibung/Strasze">
+                  <strong>Straße</strong>
+                </a>
+              </section>
+            </div>
+            "#,
+        );
+
+        assert_eq!(
+            parse_search_results(&html, "Strasse"),
+            vec!["https://www.duden.de/rechtschreibung/Strasze?amp".to_owned()]
         );
     }
 

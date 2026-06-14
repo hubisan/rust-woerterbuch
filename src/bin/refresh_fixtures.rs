@@ -110,7 +110,7 @@ async fn download_dwds(client: &Client, word: &str) -> Result<()> {
     let dir = fixture_dir(Source::Dwds, word);
     fs::create_dir_all(&dir)?;
 
-    let url = format!("https://www.dwds.de/wb/{}", urlencoding::encode(word));
+    let url = sources::dwds::build_url(word);
     let (status, body) = fetch_response(client, &url).await?;
     write_text_file(dir.join("page.status"), &status.as_u16().to_string())?;
     write_text_file(dir.join("page.html"), &body)?;
@@ -122,9 +122,8 @@ async fn download_wiktionary(client: &Client, word: &str) -> Result<()> {
     let dir = fixture_dir(Source::Wiktionary, word);
     fs::create_dir_all(&dir)?;
 
-    let encoded = urlencoding::encode(word);
-    let api_url = format!("https://de.wiktionary.org/api/rest_v1/page/html/{encoded}");
-    let page_url = format!("https://de.wiktionary.org/wiki/{encoded}");
+    let api_url = sources::wiktionary::build_api_url(word);
+    let page_url = sources::wiktionary::build_page_url(word);
     let (status, body) = fetch_response(client, &api_url).await?;
     write_text_file(dir.join("page.status"), &status.as_u16().to_string())?;
     write_text_file(dir.join("page.html"), &body)?;
@@ -136,10 +135,8 @@ async fn download_openthesaurus(client: &Client, word: &str) -> Result<()> {
     let dir = fixture_dir(Source::Openthesaurus, word);
     fs::create_dir_all(&dir)?;
 
-    let encoded = urlencoding::encode(word);
-    let api_url =
-        format!("https://www.openthesaurus.de/synonyme/search?format=application/json&q={encoded}");
-    let page_url = format!("https://www.openthesaurus.de/synonyme/{encoded}");
+    let api_url = sources::openthesaurus::build_api_url(word);
+    let page_url = sources::openthesaurus::build_page_url(word);
     let (status, body) = fetch_response(client, &api_url).await?;
     write_text_file(dir.join("page.status"), &status.as_u16().to_string())?;
     write_text_file(dir.join("page.json"), &body)?;
