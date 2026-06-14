@@ -4,6 +4,7 @@ This file records completed changes.
 
 ## Unreleased
 
+- `CHANGED`: Markdown and Org now render example blocks as nested `Examples` headings instead of plain inline labels.
 - `FIXED`: Source URL handling is now more robust across Duden, Wiktionary, DWDS, and OpenThesaurus, including Swiss `ss` fallbacks where verification is needed.
 - `CHANGED`: Human, Markdown, and Org output now include lookup headers; Org also sets `#+STARTUP: showall`, and JSON now includes a top-level timestamp.
 - `CHANGED`: Human output now renders sense labels and references with single quotes instead of backticks.

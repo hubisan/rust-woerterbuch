@@ -221,11 +221,16 @@ fn render_text_by_source(
             let mut wrote_section = false;
             for section in ContentSection::ALL {
                 let mut section_output = String::new();
+                let content_heading_level = match section {
+                    ContentSection::Definitions => section_heading_level,
+                    _ => 0,
+                };
                 render_entry_section_content(
                     entry,
                     section,
                     syntax,
                     max_examples,
+                    content_heading_level,
                     &mut section_output,
                 );
                 if section_output.is_empty() {
@@ -281,7 +286,24 @@ fn render_text_by_section(
                 if show_entry_headings {
                     push_entry_heading(output, syntax, 3, entry);
                 }
-                render_entry_section_content(entry, section, syntax, max_examples, output);
+                let content_heading_level = match section {
+                    ContentSection::Definitions => {
+                        if show_entry_headings {
+                            3
+                        } else {
+                            2
+                        }
+                    }
+                    _ => 0,
+                };
+                render_entry_section_content(
+                    entry,
+                    section,
+                    syntax,
+                    max_examples,
+                    content_heading_level,
+                    output,
+                );
             }
         }
     }
@@ -296,6 +318,7 @@ fn render_entry_section_content(
     section: ContentSection,
     syntax: TextSyntax,
     max_examples: Option<usize>,
+    content_heading_level: usize,
     output: &mut String,
 ) {
     match section {
@@ -305,7 +328,9 @@ fn render_entry_section_content(
             }
         }
         ContentSection::Synonyms => render_synonyms(entry, syntax, output),
-        ContentSection::Definitions => render_definitions(entry, syntax, max_examples, output),
+        ContentSection::Definitions => {
+            render_definitions(entry, syntax, max_examples, content_heading_level, output)
+        }
         ContentSection::Idioms => render_idioms(entry, syntax, output),
     }
 }
@@ -358,10 +383,18 @@ fn render_definitions(
     entry: &DictionaryEntry,
     syntax: TextSyntax,
     max_examples: Option<usize>,
+    content_heading_level: usize,
     output: &mut String,
 ) {
     for sense in &entry.senses {
-        render_sense_definition(sense, syntax, 0, max_examples, output);
+        render_sense_definition(
+            sense,
+            syntax,
+            0,
+            max_examples,
+            content_heading_level,
+            output,
+        );
     }
 }
 
@@ -370,6 +403,7 @@ fn render_sense_definition(
     syntax: TextSyntax,
     depth: usize,
     max_examples: Option<usize>,
+    content_heading_level: usize,
     output: &mut String,
 ) {
     if !sense_has_definition_section_content(sense) {
@@ -389,14 +423,41 @@ fn render_sense_definition(
 
     if rendered_examples.len() > 0 {
         ensure_blank_line(output);
-        push_label(output, syntax, depth + 1, "Examples:");
+        push_examples_heading(output, syntax, depth, content_heading_level);
         for example in rendered_examples {
             push_bullet(output, syntax, depth + 2, example);
         }
     }
 
     for child in &sense.subsenses {
-        render_sense_definition(child, syntax, depth + 1, max_examples, output);
+        render_sense_definition(
+            child,
+            syntax,
+            depth + 1,
+            max_examples,
+            content_heading_level,
+            output,
+        );
+    }
+}
+
+fn push_examples_heading(
+    output: &mut String,
+    syntax: TextSyntax,
+    depth: usize,
+    content_heading_level: usize,
+) {
+    match syntax {
+        TextSyntax::Human => push_label(output, syntax, depth + 1, "Examples:"),
+        TextSyntax::Markdown | TextSyntax::Org => {
+            push_heading(
+                output,
+                syntax,
+                content_heading_level + depth + 1,
+                "Examples",
+            );
+            output.push('\n');
+        }
     }
 }
 
@@ -768,7 +829,7 @@ mod tests {
         .expect("markdown render");
 
         assert!(rendered.starts_with("---\ntitle: \"Wörterbuch: Bank\"\ndate: \""));
-        assert!(rendered.contains("\n---\n\n# Dwds\n\nTitle: Bank, die\nPart of speech: Substantiv\nGrammar: feminin\n\n## Etymology\n\nvon alt\n\n## Definitions\n\n- `1.` erste Bedeutung\n\n  Examples:\n    - ein Beispiel\n\n## Idioms\n\n- durch die Bank\n"));
+        assert!(rendered.contains("\n---\n\n# Dwds\n\nTitle: Bank, die\nPart of speech: Substantiv\nGrammar: feminin\n\n## Etymology\n\nvon alt\n\n## Definitions\n\n- `1.` erste Bedeutung\n\n### Examples\n\n    - ein Beispiel\n\n## Idioms\n\n- durch die Bank\n"));
     }
 
     #[test]
@@ -1131,6 +1192,7 @@ mod tests {
         assert!(rendered.starts_with("---\ntitle: \"Wörterbuch: Bank\"\ndate: \""));
         assert!(rendered.contains("    - eins\n    - zwei\n"));
         assert!(!rendered.contains("    - drei\n"));
+        assert!(rendered.contains("\n### Examples\n\n"));
     }
 
     #[test]
@@ -1168,6 +1230,36 @@ mod tests {
         assert!(rendered.contains("- ~1.~ erste Bedeutung"));
         assert!(!rendered.contains("Examples:"));
         assert!(!rendered.contains("- eins"));
+    }
+
+    #[test]
+    fn org_examples_are_rendered_as_headings() {
+        let response = LookupResponse {
+            query: "Bank".to_owned(),
+            results: vec![SourceResult::ok(
+                Source::Dwds,
+                Some(UrlValue::One("https://example.test".to_owned())),
+                vec![DictionaryEntry {
+                    id: 1,
+                    headword: "Bank".to_owned(),
+                    senses: vec![Sense {
+                        id: 1,
+                        label: Some("1.".to_owned()),
+                        definition: Some("erste Bedeutung".to_owned()),
+                        examples: vec!["eins".to_owned()],
+                        ..Sense::default()
+                    }],
+                    ..DictionaryEntry::default()
+                }],
+            )],
+        };
+
+        let rendered =
+            render(&response, OutputFormat::Org, OutputLayout::BySource, None).expect("org render");
+
+        assert!(rendered.contains(
+            "\n** Definitions\n\n- ~1.~ erste Bedeutung\n\n*** Examples\n\n    - eins\n"
+        ));
     }
 
     #[test]

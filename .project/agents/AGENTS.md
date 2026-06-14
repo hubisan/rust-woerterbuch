@@ -1,6 +1,6 @@
 # AI Agent Instructions
 
-Version: 0.5.0
+Version: 0.6.0
 
 AI agents must read this file before changing this repository.
 
@@ -42,11 +42,13 @@ Match user's language for chat. Use English for code, comments, docs, commits, a
 
 ## Model suitability and cost awareness
 
-Before starting substantial work, the AI agent should briefly mention if the current model appears either underpowered or unnecessarily powerful for the task.
+Before starting substantial work, the AI agent should briefly assess whether the current model is appropriate for the task.
 
-If a stronger model would likely improve correctness, reasoning, context handling, or modality support, the agent should say so. If a cheaper or faster model would likely be sufficient, the agent should also say so to help reduce cost.
+If a stronger model would likely improve correctness, reasoning quality, context handling, modality support, or safety, the agent should say so and pause so the user can choose whether to switch models.
 
-The agent should continue with a best-effort approach unless the limitation would materially affect correctness, safety, or usefulness.
+If a cheaper or faster model would likely be sufficient, the agent should also say so and pause so the user can choose whether to switch models.
+
+The agent should continue with a best-effort approach only when the model choice is unlikely to materially affect correctness, safety, or usefulness. Otherwise, it should pause and let the user decide before proceeding.
 
 ## Workflow
 
