@@ -1,41 +1,26 @@
 ---
 title: "<Short Task Title>"
-template_version: "0.2.0"
-task_started:
-task_completed:
+template_version: "0.4.0"
+task_started: null
+task_completed: null
 ---
 
-# Context
+# Planning
 
-- Branch: `<branch-name>`
-- Focus: <file/module/topic>
+## Problem summary
+## Goals
+## Non-goals
+## Architecture
+## Execution plan
+## Risks & assumptions
+## Open questions
+## Proposed checks
 
-# Goal
+# Build
 
-<What should be achieved by the end?>
-
-# Result
-
-<Summary of the main finding, outcome, or decision.>
-
-# Changes
-
-- <Concrete change 1>
-- <Concrete change 2>
-- <Concrete change 3>
-- <Concrete change 4>
-
-# Checks
-
-- <Check/test/review 1>
-- <Check/test/review 2>
-
-# Out of scope
-
-- <What was intentionally not done?>
-- <What belongs in a separate task?>
-
-# Open points
-
-- <Open point 1>
-- <Open point 2>
+## Approach
+## Changed files
+## Checks performed
+## Test results
+## Blockers
+## Follow-ups
