@@ -1,9 +1,13 @@
 ---
 title: "<Short Task Title>"
-template_version: "0.4.0"
+template_version: "0.5.0"
 task_started: null
 task_completed: null
 ---
+
+# Original Task
+
+<full original task body from todo.org>
 
 # Planning
 

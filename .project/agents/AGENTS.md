@@ -1,6 +1,6 @@
 # AI Agent Instructions
 
-Version: 0.9.0
+Version: 0.10.0
 
 Read this file before changing this repository. Repo-specific rules are in [./repository.md](./repository.md).
 
@@ -58,4 +58,13 @@ Read in order before starting: `AGENTS.md` → `../tasks/todo.md` → `./reposit
 3. Write a `* Build` section in the task file: date, status, summary, changed files, checks performed, test results, blockers, open questions.
 4. Set task to `REVIEW` and notify the user.
 5. **After user approval:** Set task to `DONE`, update the heading to include the completion date (e.g. `# DONE YYYY-MM-DD HH:MM <title>`), add/update `task_completed: YYYY-MM-DD HH:MM`, move task file to `../tasks/archive/`, update the link in `todo.md`, and move the entry under `# Completed`.
-   If not approved: set to `CONTINUE`, address review comments, repeat from step 2.
+   - Set the task to `DONE`.
+   - Update the task heading in `todo.org` to include the completion date, e. g. `# DONE YYYY-MM-DD HH:MM <title>`.
+   - Add `task_completed: YYYY-MM-DD HH:MM` near the top of the task file.
+   - Move the full task description/body from the `todo.md` entry into the task file under a `# Original Task` section, if it is not already preserved there.
+   - Move the task file to `../tasks/archive/`.
+   - Update the task link in `todo.md` so it points to the archived task file.
+   - Move the completed entry in `todo.md` under `# Completed` as subheading.
+   - In `todo.md`, keep only the completed task heading and the link to the archived task file. Do not keep the full task body in `todo.md`.
+
+   **If not approved:** set to `CONTINUE`, address review comments, repeat from step 2.
