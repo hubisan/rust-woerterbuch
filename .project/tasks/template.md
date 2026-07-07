@@ -1,30 +1,28 @@
 ---
 title: "<Short Task Title>"
-template_version: "0.5.0"
+template_version: "0.7.0"
 task_started: null
 task_completed: null
 ---
 
-# Original Task
-
-<full original task body from todo.org>
+# Input & Todo Task
 
 # Planning
 
-## Problem summary
+## Problem Summary
 ## Goals
-## Non-goals
-## Architecture
-## Execution plan
-## Risks & assumptions
-## Open questions
-## Proposed checks
+## Non-Goals
+## Design & Architecture
+## Execution Plan
+## Risks & Assumptions
+## Open Questions
+## Proposed Checks
 
-# Build
+# Results
 
 ## Approach
-## Changed files
-## Checks performed
-## Test results
+## Changed Files
+## Checks Performed
+## Test Results
 ## Blockers
-## Follow-ups
+## Follow-Ups

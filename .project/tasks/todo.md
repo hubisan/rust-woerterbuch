@@ -16,18 +16,49 @@ Important files:
 
 Das bestehende Emacs-Lisp-Package, welches Wörterbuch-Daten von vier verschiedenen Quellen — Duden, DWDS, Wiktionary und OpenThesaurus — via Scraping aggregiert, wird in ein performantes, asynchrones Rust-CLI-Tool umgewandelt.
 
-# TODO Release checkpoint
+# TODO Fix: Examples as headings breaks structure
 
-- Fresh clone test:
-  - clone repo into an empty directory
-  - follow README installation steps only
-  - run `woerterbuch Bank`
-  - run `woerterbuch Bank --json`
+Ich arbeite an einem Rust-Projekt mit einem Renderer für `Human`, `Markdown`, `Org` und `Json`.
 
-- Tag first private usable version:
-  - `v0.1.0`
+Bitte passe den Renderer so an, dass Beispiele (`examples`) nicht mehr als Heading gerendert werden.
 
-- Confirm README, CHANGELOG, CI, and basic Emacs usage are all in sync.
+Gewünschtes Verhalten:
+
+Für Markdown sollen Examples als verschachtelte Liste unter der jeweiligen Definition erscheinen:
+
+```markdown
+- `1.` erste Bedeutung
+
+  - Examples
+    - eins
+    - zwei
+```
+
+Für Org sollen Examples als foldbarer Org Drawer erscheinen, damit sie keine neue Heading erzeugen und die Dokumentstruktur korrekt bleibt:
+
+```org
+- ~1.~ erste Bedeutung
+
+  :EXAMPLES:
+  - eins
+  - zwei
+  :END:
+```
+
+Wichtig:
+
+* `### Examples` bzw. `*** Examples` darf nicht mehr erzeugt werden.
+* `content_heading_level` soll entfernt werden, falls es danach nur noch rekursiv weitergereicht wird.
+* `push_examples_heading` soll entfernt oder passend umbenannt werden.
+* Clippy darf nicht wegen `only_used_in_recursion` fehlschlagen.
+* Tests sollen angepasst werden:
+
+  * Markdown: Examples als nested list prüfen.
+  * Org: Examples als `:EXAMPLES:` Drawer prüfen.
+  * Sicherstellen, dass alte Headings wie `### Examples` oder `*** Examples` nicht mehr vorkommen.
+  * `max_examples` soll weiterhin funktionieren.
+
+Bitte ändere den Code minimal-invasiv und achte darauf, dass `cargo fmt --all --check`, `cargo clippy --all-targets --all-features -- -D warnings` und die Tests durchlaufen.
 
 # Completed
 
@@ -1935,3 +1966,17 @@ In dem Ordner sind die Emasc Lisp Dateien für das Scrapen/Parsen [emacs-lisp](.
   [tests/openthesaurus](../../emacs-lisp/tests/files/openthesaurus/)
 
 Bitte übernehme einfach die Logik, aber mache es so wie in Rust normal. Wenn du in der Logik Schwachstellen siehst, dann verbessere dies.
+
+## DONE Release checkpoint
+
+- Fresh clone test:
+  - clone repo into an empty directory
+  - follow README installation steps only
+  - run `woerterbuch Bank`
+  - run `woerterbuch Bank --json`
+
+- Tag first private usable version:
+  - `v0.1.0`
+
+- Confirm README, CHANGELOG, CI, and basic Emacs usage are all in sync.
+

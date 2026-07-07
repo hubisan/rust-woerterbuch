@@ -18,32 +18,51 @@ The project is intended to be installed from a Git clone, not published as a pub
 
 ## Installation from Git clone
 
-Clone the repository and build the release binary:
+Clone the repository first:
 
 ```bash
 git clone https://github.com/hubisan/rust-woerterbuch
 cd rust-woerterbuch
-cargo build --release
 ```
 
-The compiled binary is then available at:
+### Build a release binary
+
+To build an optimized binary without installing it, run:
+
+```bash
+make build
+```
+
+This creates the binary at:
 
 ```bash
 ./target/release/woerterbuch
 ```
 
-For local installation into Cargo's binary directory:
+You can run it directly from the repository:
 
 ```bash
-git clone https://github.com/hubisan/rust-woerterbuch
-cd rust-woerterbuch
-cargo install --path . --locked --force
+./target/release/woerterbuch Bank --json
 ```
 
-After that, the command should be available as:
+### Install the command locally
+
+To install `woerterbuch` into Cargo's local binary directory, run:
+
+```bash
+make install
+```
+
+This uses `cargo install --path . --locked --force` and makes the command available outside the repository, assuming Cargo's binary directory is in your `PATH`:
 
 ```bash
 woerterbuch Bank --json
+```
+
+To test the installation without overwriting an existing binary, run:
+
+```bash
+make install-check
 ```
 
 ## Usage
